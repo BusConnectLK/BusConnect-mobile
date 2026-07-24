@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, router, type Href } from "expo-router";
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { Spacing } from "@/constants/theme";
+
+GoogleSignin.configure({
+  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  // Also required (not just the iOS client) — this is the audience Supabase
+  // actually validates the returned ID token against, matching the web
+  // app's own Google client. See BusConnect-web's login page for the
+  // equivalent GSI-based flow.
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -29,10 +44,37 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
     setLoading(false);
     if (error) return setError(error.message);
+    goNext();
+  }
+
+  function goNext() {
     // `next` is a dynamic, runtime-constructed path (e.g. "/trips/abc?from=x")
     // that typed routes can't statically validate — Href is the documented
     // escape hatch for exactly this case.
     router.replace(((next as string) || "/") as Href);
+  }
+
+  async function signInWithGoogle() {
+    setError(null);
+    setLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices(); // no-op on iOS, required before signIn() on Android
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) return; // user cancelled — not an error
+      const idToken = response.data.idToken;
+      if (!idToken) {
+        setError("Google didn't return a usable sign-in token. Try again.");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
+      if (error) return setError(error.message);
+      goNext();
+    } catch (e) {
+      if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) return;
+      setError("Could not sign in with Google. Try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -87,6 +129,20 @@ export default function LoginScreen() {
           </Pressable>
         </>
       )}
+
+      <View style={styles.dividerRow}>
+        <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>or</Text>
+        <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+      </View>
+
+      <Pressable
+        onPress={signInWithGoogle}
+        disabled={loading}
+        style={[styles.googleButton, { borderColor: theme.border, opacity: loading ? 0.6 : 1 }]}
+      >
+        <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}>Continue with Google</Text>
+      </Pressable>
     </View>
   );
 }
@@ -98,4 +154,7 @@ const styles = StyleSheet.create({
   button: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   error: { color: "#dc2626", marginBottom: Spacing.three },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, marginVertical: Spacing.four },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  googleButton: { borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
 });
