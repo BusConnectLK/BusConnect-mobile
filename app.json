@@ -37,7 +37,18 @@
       ],
       "expo-secure-store",
       "@react-native-community/datetimepicker",
-      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BusConnect needs access to your photos to set a profile picture."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.872707721110-h77ehjgpg2tcidjaibhaepu1mghc80l6"
+        }
+      ],
       [
         "expo-build-properties",
         {

@@ -45,6 +45,15 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.navRow}>
+        <Pressable onPress={() => router.push("/tickets")} hitSlop={10}>
+          <Text style={{ color: theme.brand, fontWeight: "600" }}>My tickets</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push("/profile")} hitSlop={10}>
+          <Text style={{ color: theme.brand, fontWeight: "600" }}>Profile</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.hero}>
         <Text style={[styles.title, { color: theme.text }]}>Every Journey, Connected.</Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -168,7 +177,14 @@ function LocationPicker({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  hero: { paddingHorizontal: Spacing.four, paddingTop: Spacing.six, paddingBottom: Spacing.four },
+  navRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  hero: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.four },
   title: { fontSize: 30, fontWeight: "800", letterSpacing: -0.5 },
   subtitle: { fontSize: 15, marginTop: Spacing.two, lineHeight: 21 },
   card: {

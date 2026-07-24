@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
-import { getBooking, ApiError, type Booking } from "@/lib/api";
+import { getBooking, cancelBooking, ApiError, type Booking } from "@/lib/api";
 import { Spacing } from "@/constants/theme";
+
+/** Mirrors BookingsService's refund tiers (web's cancel-button.tsx) — preview
+ *  only, the server is authoritative. */
+function previewRefundPct(departAt: string): number {
+  const hours = (new Date(departAt).getTime() - Date.now()) / 3_600_000;
+  if (hours >= 24) return 100;
+  if (hours >= 3) return 50;
+  return 0;
+}
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-LK", {
@@ -23,6 +32,7 @@ export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!id || !session) return;
@@ -63,6 +73,36 @@ export default function TicketScreen() {
 
   const ticket = booking.tickets?.[0];
   const confirmed = booking.status === "confirmed";
+  const cancellable = booking.status === "confirmed" || booking.status === "pending";
+
+  function onCancelPress() {
+    if (!session || !booking) return;
+    const pct = booking.trip?.depart_at ? previewRefundPct(booking.trip.depart_at) : 0;
+    const refundLine =
+      pct > 0
+        ? `You'll get back LKR ${(Math.round(booking.amount * pct) / 100).toLocaleString("en-LK")} (${pct}%, based on how close to departure this is).`
+        : "This is inside the no-refund window, so no amount will be returned.";
+
+    Alert.alert("Cancel this booking?", refundLine, [
+      { text: "Keep booking", style: "cancel" },
+      {
+        text: "Yes, cancel",
+        style: "destructive",
+        onPress: async () => {
+          setCancelling(true);
+          try {
+            await cancelBooking(session.access_token, booking.id);
+            const refreshed = await getBooking(session.access_token, booking.id);
+            setBooking(refreshed);
+          } catch (e) {
+            Alert.alert("Couldn't cancel", e instanceof ApiError ? e.message : "Try again.");
+          } finally {
+            setCancelling(false);
+          }
+        },
+      },
+    ]);
+  }
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
@@ -103,6 +143,16 @@ export default function TicketScreen() {
           <Text style={{ color: theme.text }}>{booking.id.slice(0, 8).toUpperCase()}</Text>
         </View>
       </View>
+
+      {cancellable && (
+        <Pressable onPress={onCancelPress} disabled={cancelling} style={styles.cancelButton}>
+          {cancelling ? (
+            <ActivityIndicator color="#dc2626" />
+          ) : (
+            <Text style={{ color: "#dc2626", fontWeight: "600" }}>Cancel booking</Text>
+          )}
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -114,4 +164,5 @@ const styles = StyleSheet.create({
   status: { fontSize: 16, fontWeight: "800", textAlign: "center", marginBottom: Spacing.three },
   qrWrap: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.four },
   row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
+  cancelButton: { alignItems: "center", paddingVertical: Spacing.three, marginTop: Spacing.three },
 });

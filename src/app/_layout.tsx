@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" options={{ headerShown: true, title: "Sign in" }} />
+          <Stack.Screen name="tickets" options={{ headerShown: true, title: "My tickets" }} />
+          <Stack.Screen name="profile" options={{ headerShown: true, title: "Profile" }} />
           <Stack.Screen name="search-results" options={{ headerShown: true, title: "Search results" }} />
           <Stack.Screen name="trips/[id]" options={{ headerShown: true, title: "Trip details" }} />
           <Stack.Screen name="checkout/[id]" options={{ headerShown: true, title: "Payment" }} />

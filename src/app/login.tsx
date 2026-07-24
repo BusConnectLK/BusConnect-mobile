@@ -1,24 +1,11 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, router, type Href } from "expo-router";
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  isSuccessResponse,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { Spacing } from "@/constants/theme";
-
-GoogleSignin.configure({
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  // Also required (not just the iOS client) — this is the audience Supabase
-  // actually validates the returned ID token against, matching the web
-  // app's own Google client. See BusConnect-web's login page for the
-  // equivalent GSI-based flow.
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-});
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -54,23 +41,46 @@ export default function LoginScreen() {
     router.replace(((next as string) || "/") as Href);
   }
 
+  /**
+   * Browser-based OAuth (Supabase's own documented pattern), not the native
+   * @react-native-google-signin SDK. That library generates its own internal
+   * nonce for the ID token with no way for the app to supply — or even read
+   * back — the pre-hash value, and Supabase requires the raw nonce (it
+   * hashes it server-side to compare against the token's claim), so the two
+   * are fundamentally incompatible. Routing through Supabase's own OAuth
+   * redirect sidesteps ID-token/nonce handling entirely: Supabase talks to
+   * Google directly and hands back a session once the browser redirects
+   * home, the same trust model the web app's cookie session already uses.
+   */
   async function signInWithGoogle() {
     setError(null);
     setLoading(true);
     try {
-      await GoogleSignin.hasPlayServices(); // no-op on iOS, required before signIn() on Android
-      const response = await GoogleSignin.signIn();
-      if (!isSuccessResponse(response)) return; // user cancelled — not an error
-      const idToken = response.data.idToken;
-      if (!idToken) {
-        setError("Google didn't return a usable sign-in token. Try again.");
+      const redirectTo = Linking.createURL("/login");
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) return setError(error.message);
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type !== "success") return; // user cancelled/dismissed — not an error
+
+      const url = new URL(result.url);
+      const fragment = url.hash.startsWith("#") ? url.hash.slice(1) : url.search.slice(1);
+      const params = new URLSearchParams(fragment);
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      if (!access_token || !refresh_token) {
+        setError("Google sign-in didn't return a valid session. Try again.");
         return;
       }
-      const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
-      if (error) return setError(error.message);
+
+      const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (sessionError) return setError(sessionError.message);
       goNext();
     } catch (e) {
-      if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) return;
+      console.error("Google sign-in error:", e);
       setError("Could not sign in with Google. Try again.");
     } finally {
       setLoading(false);
