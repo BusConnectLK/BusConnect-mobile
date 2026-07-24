@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams, router, type Href } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { Spacing } from "@/constants/theme";
@@ -29,7 +29,10 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
     setLoading(false);
     if (error) return setError(error.message);
-    router.replace((next as string) ?? "/");
+    // `next` is a dynamic, runtime-constructed path (e.g. "/trips/abc?from=x")
+    // that typed routes can't statically validate — Href is the documented
+    // escape hatch for exactly this case.
+    router.replace(((next as string) || "/") as Href);
   }
 
   return (

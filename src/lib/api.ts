@@ -186,6 +186,20 @@ export interface WebXPayCheckout {
   fields: Record<string, string>;
 }
 
+/** Live GPS position from the conductor's device, if it's pushing one yet. */
+export type TripLive =
+  | { ok: true; tracking: false }
+  | {
+      ok: true;
+      tracking: true;
+      lat: number;
+      lng: number;
+      speed_kmh: number | null;
+      recorded_at: string;
+      distance_m: number | null;
+      eta_minutes: number | null;
+    };
+
 // ── Public (no token) ────────────────────────────────────────────────────────
 
 export function searchTrips(params: { from: string; to: string; date: string }) {
@@ -199,6 +213,11 @@ export function getTrip(id: string) {
 
 export function getSeatmap(id: string) {
   return request<SeatMap>(`/trips/${id}/seatmap`);
+}
+
+export function getTripLive(id: string, stopId?: string) {
+  const qs = stopId ? `?stopId=${encodeURIComponent(stopId)}` : "";
+  return request<TripLive>(`/trips/${id}/live${qs}`);
 }
 
 // ── Authenticated (token required) ──────────────────────────────────────────

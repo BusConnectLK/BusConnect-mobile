@@ -23,6 +23,7 @@ import {
   type SeatState,
 } from "@/lib/api";
 import { layoutToGrid } from "@/lib/seat-layout";
+import { LiveMap } from "@/components/live-map";
 import { Spacing } from "@/constants/theme";
 
 const SEAT_COLOR = {
@@ -177,6 +178,14 @@ export default function TripDetailScreen() {
         <Text style={{ color: theme.textSecondary, marginTop: 2 }}>
           {trip.bus.bus_type.name} · {trip.bus.reg_no}
         </Text>
+
+        <View style={{ marginTop: Spacing.three }}>
+          <LiveMap
+            tripId={trip.id}
+            stopId={from ?? ""}
+            active={trip.status === "boarding" || trip.status === "departed"}
+          />
+        </View>
 
         <View style={styles.legend}>
           <LegendItem color="transparent" border={theme.border} label="Available" />
