@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
@@ -69,9 +69,7 @@ export default function SignUpScreen() {
       style={[styles.container, { backgroundColor: theme.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.badge, { backgroundColor: theme.brand }]}>
-        <Ionicons name="bus" size={30} color="#fff" />
-      </View>
+      <Image source={require("../../assets/images/applogo.png")} style={styles.logo} />
 
       <Text style={[styles.title, { color: theme.text }]}>Create your account</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -206,14 +204,7 @@ function Field({
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: Spacing.four, paddingTop: Spacing.five, alignItems: "center" },
-  badge: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.three,
-  },
+  logo: { width: 64, height: 64, borderRadius: 16, marginBottom: Spacing.three },
   title: { fontSize: 24, fontWeight: "800", textAlign: "center" },
   subtitle: {
     fontSize: 14,

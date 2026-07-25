@@ -9,17 +9,17 @@ import { Image, StyleSheet, View } from "react-native";
 export function SplashTransition() {
   return (
     <View style={[StyleSheet.absoluteFill, styles.container]}>
-      <Image source={require("../../assets/images/splash-icon.png")} style={styles.mark} resizeMode="contain" />
+      <Image source={require("../../assets/images/applogo.png")} style={styles.mark} resizeMode="contain" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#208AEF",
+    backgroundColor: "#004AAD",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,
   },
-  mark: { width: 76, height: 76 },
+  mark: { width: 140, height: 140, borderRadius: 24 },
 });

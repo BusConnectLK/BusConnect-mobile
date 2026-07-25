@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
 import { useAuth } from "@/lib/auth";
-import { uploadPassengerPhoto } from "@/lib/storage";
 import { getMyProfile, updateMyProfile, ApiError, type MyProfile } from "@/lib/api";
 import { PhoneField } from "@/components/phone-field";
-import { stripCountryCode, toE164 } from "@/lib/phone";
+import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
 import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
 import { SplashTransition } from "@/components/splash-transition";
@@ -73,13 +71,12 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <ProfileHero profile={profile} theme={theme} onPickPhoto={() => {}} />
+        <ProfileHero profile={profile} theme={theme} />
 
         <ProfileForm
           profile={profile}
           accessToken={session.access_token}
           provider={session.user.app_metadata?.provider ?? null}
-          userId={session.user.id}
           onSaved={setProfile}
           theme={theme}
         />
@@ -87,18 +84,15 @@ export default function ProfileScreen() {
         <PreferencesSection theme={theme} />
         <SupportSection theme={theme} />
 
-        <Pressable onPress={handleSignOut} style={[styles.rowCard, { borderColor: theme.border }]}>
-          <Ionicons name="log-out-outline" size={17} color="#dc2626" />
-          <Text style={{ color: "#dc2626", fontWeight: "600" }}>Sign out</Text>
+        <Pressable onPress={handleSignOut} style={styles.dangerButton}>
+          <Ionicons name="log-out-outline" size={17} color="#fff" />
+          <Text style={styles.dangerButtonText}>Sign out</Text>
         </Pressable>
 
         <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: Spacing.four }]}>Danger zone</Text>
-        <Pressable
-          onPress={() => router.push("/delete-account")}
-          style={[styles.rowCard, { borderColor: theme.border }]}
-        >
-          <Ionicons name="trash-outline" size={17} color="#dc2626" />
-          <Text style={{ color: "#dc2626", fontWeight: "600" }}>Delete account</Text>
+        <Pressable onPress={() => router.push("/delete-account")} style={styles.dangerButton}>
+          <Ionicons name="trash-outline" size={17} color="#fff" />
+          <Text style={styles.dangerButtonText}>Delete account</Text>
         </Pressable>
       </ScrollView>
       {signingOut && <SplashTransition />}
@@ -106,7 +100,7 @@ export default function ProfileScreen() {
   );
 }
 
-function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType<typeof useTheme>; onPickPhoto: () => void }) {
+function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType<typeof useTheme> }) {
   return (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
       {profile.avatar_url ? (
@@ -117,7 +111,7 @@ function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType
         </View>
       )}
       <Text style={styles.heroName}>{profile.name || "Add your name"}</Text>
-      <Text style={styles.heroSubtitle}>{profile.email || profile.phone || ""}</Text>
+      <Text style={styles.heroSubtitle}>{profile.email || formatPhoneDisplay(profile.phone)}</Text>
     </SafeAreaView>
   );
 }
@@ -126,14 +120,12 @@ function ProfileForm({
   profile,
   accessToken,
   provider,
-  userId,
   onSaved,
   theme,
 }: {
   profile: MyProfile;
   accessToken: string;
   provider: string | null;
-  userId: string;
   onSaved: (p: MyProfile) => void;
   theme: ReturnType<typeof useTheme>;
 }) {
@@ -141,7 +133,6 @@ function ProfileForm({
   const [phone, setPhone] = useState(stripCountryCode(profile.phone));
   const [email, setEmail] = useState(profile.email ?? "");
   const [nic, setNic] = useState(profile.nic ?? "");
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -152,39 +143,17 @@ function ProfileForm({
   const emailLocked = provider === "google";
   const phoneLocked = provider === "phone";
 
-  async function pickPhoto() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError("Photo library access is needed to change your profile photo.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) setPhotoUri(result.assets[0].uri);
-  }
-
   async function submit() {
     setError(null);
     setSaved(false);
     setBusy(true);
     try {
-      let avatarUrl: string | undefined;
-      if (photoUri) {
-        setStatus("Uploading photo…");
-        avatarUrl = await uploadPassengerPhoto(userId, photoUri);
-      }
-
       setStatus("Saving…");
       const updated = await updateMyProfile(accessToken, {
         name: name || undefined,
         phone: phoneLocked ? undefined : phone ? toE164(phone) : undefined,
         email: emailLocked ? undefined : email || undefined,
         nic: nic || undefined,
-        avatarUrl,
       });
       onSaved(updated);
       setSaved(true);
@@ -196,18 +165,9 @@ function ProfileForm({
     }
   }
 
-  const avatarSrc = photoUri ?? profile.avatar_url;
-
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <View style={styles.cardTitleRow}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
-        <Pressable onPress={pickPhoto} hitSlop={8}>
-          <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}>
-            {avatarSrc ? "Change photo" : "Add photo"}
-          </Text>
-        </Pressable>
-      </View>
+      <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
 
       <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
 
@@ -396,17 +356,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, padding: Spacing.three, fontSize: 16 },
   saveButton: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: Spacing.four },
   saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  rowCard: {
-    flexDirection: "row",
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: Spacing.four,
-    marginTop: Spacing.three,
-  },
   segmentRow: { flexDirection: "row", gap: Spacing.two },
   segment: {
     flex: 1,
@@ -421,4 +370,16 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.three },
   toggleRow: { flexDirection: "row", alignItems: "center" },
   linkRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, paddingVertical: Spacing.three },
+  dangerButton: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#dc2626",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: Spacing.four,
+    marginTop: Spacing.three,
+  },
+  dangerButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

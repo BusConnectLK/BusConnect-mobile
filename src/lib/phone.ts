@@ -16,3 +16,11 @@ export function stripCountryCode(phone: string | null | undefined): string {
 export function toE164(localDigits: string): string {
   return `${PHONE_COUNTRY_CODE}${localDigits.replace(/\D/g, "")}`;
 }
+
+/** Formats a stored phone number for display with a leading "+" — Supabase
+ *  stores it as E.164 digits only (no "+"), so a raw display would silently
+ *  drop the country-code prefix. */
+export function formatPhoneDisplay(phone: string | null | undefined): string {
+  if (!phone) return "";
+  return phone.startsWith("+") ? phone : `+${phone}`;
+}
