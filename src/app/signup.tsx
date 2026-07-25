@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { updateMyProfile } from "@/lib/api";
+import { PhoneField } from "@/components/phone-field";
+import { toE164 } from "@/lib/phone";
 import { Spacing } from "@/constants/theme";
 
 export default function SignUpScreen() {
@@ -31,7 +33,7 @@ export default function SignUpScreen() {
     }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
-      phone,
+      phone: toE164(phone),
       password,
       options: { data: { full_name: name } },
     });
@@ -43,7 +45,7 @@ export default function SignUpScreen() {
   async function verifyAndFinish() {
     setError(null);
     setLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
+    const { data, error } = await supabase.auth.verifyOtp({ phone: toE164(phone), token: otp, type: "sms" });
     if (error) {
       setLoading(false);
       return setError(error.message);
@@ -75,23 +77,17 @@ export default function SignUpScreen() {
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
         {stage === "details"
           ? "Just a few details, then we'll verify your number with a one-time code."
-          : `Enter the code sent to ${phone}.`}
+          : `Enter the code sent to ${toE164(phone)}.`}
       </Text>
 
       <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
         {stage === "details" ? (
           <>
             <Field icon="person-outline" label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
-            <Field
-              icon="call-outline"
-              label="Phone number"
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+94 7X XXX XXXX"
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              theme={theme}
-            />
+            <View style={{ marginBottom: Spacing.three }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
+              <PhoneField value={phone} onChangeText={setPhone} />
+            </View>
             <Field
               icon="mail-outline"
               label="Email (optional)"

@@ -4,6 +4,8 @@ import { useLocalSearchParams, router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
+import { PhoneField } from "@/components/phone-field";
+import { toE164 } from "@/lib/phone";
 import { Spacing } from "@/constants/theme";
 
 export default function LoginScreen() {
@@ -24,7 +26,7 @@ export default function LoginScreen() {
   async function signIn() {
     setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ phone, password });
+    const { error } = await supabase.auth.signInWithPassword({ phone: toE164(phone), password });
     setLoading(false);
     if (error) return setError(error.message);
     goNext();
@@ -44,18 +46,7 @@ export default function LoginScreen() {
 
       <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
         <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
-        <View style={[styles.inputWrap, { borderColor: theme.border }]}>
-          <Ionicons name="call-outline" size={18} color={theme.textSecondary} />
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="+94 7X XXX XXXX"
-            placeholderTextColor={theme.textSecondary}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            style={[styles.input, { color: theme.text }]}
-          />
-        </View>
+        <PhoneField value={phone} onChangeText={setPhone} />
 
         <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginTop: Spacing.three }]}>Password</Text>
         <View style={[styles.inputWrap, { borderColor: theme.border }]}>

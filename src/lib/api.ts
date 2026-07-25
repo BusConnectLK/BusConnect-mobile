@@ -270,6 +270,7 @@ export interface MyProfile {
   id: string;
   name: string | null;
   phone: string | null;
+  nic: string | null;
   email: string | null;
   avatar_url: string | null;
   lang: string;
@@ -284,6 +285,7 @@ export interface UpdateMyProfileInput {
   name?: string;
   phone?: string;
   email?: string;
+  nic?: string;
   avatarUrl?: string;
 }
 
@@ -293,4 +295,8 @@ export function updateMyProfile(accessToken: string, input: UpdateMyProfileInput
     body: JSON.stringify(input),
     accessToken,
   });
+}
+
+export function deleteMyAccount(accessToken: string) {
+  return request<{ ok: boolean }>("/me/account", { method: "DELETE", accessToken });
 }
