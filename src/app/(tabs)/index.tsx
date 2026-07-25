@@ -67,13 +67,8 @@ export default function SearchScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
           <View style={styles.heroTopRow}>
-            <View>
-              <Text style={styles.greeting}>{firstName ? `Hello, ${firstName}` : "Every Journey, Connected."}</Text>
-              <Text style={styles.tagline}>Search live seats, book securely, board with a QR ticket.</Text>
-            </View>
-            <Pressable onPress={() => router.push("/profile")} hitSlop={10}>
-              <Ionicons name="person-circle" size={40} color="rgba(255,255,255,0.95)" />
-            </Pressable>
+            <Text style={styles.greeting}>{firstName ? `Hello, ${firstName}` : "Every Journey, Connected."}</Text>
+            <Text style={styles.tagline}>Search live seats, book securely, board with a QR ticket.</Text>
           </View>
         </SafeAreaView>
 
@@ -255,7 +250,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  heroTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  heroTopRow: { flexDirection: "column" },
   greeting: { fontSize: 24, fontWeight: "800", color: "#fff", letterSpacing: -0.3, maxWidth: 240 },
   tagline: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one, maxWidth: 260, lineHeight: 18 },
   card: {
