@@ -6,7 +6,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { deleteMyAccount, ApiError } from "@/lib/api";
-import { SplashTransition } from "@/components/splash-transition";
 import { Spacing } from "@/constants/theme";
 
 /**
@@ -30,7 +29,6 @@ export default function DeleteAccountScreen() {
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deleted, setDeleted] = useState(false);
 
   async function sendCode() {
     if (!phone) return;
@@ -66,9 +64,12 @@ export default function DeleteAccountScreen() {
       const accessToken = data.session?.access_token;
       if (!accessToken) throw new Error("Session expired — sign in again to delete your account.");
       await deleteMyAccount(accessToken);
-      await signOut();
-      setDeleted(true);
-      setTimeout(() => router.replace("/login"), 500);
+      // Don't await the full signOut() — it holds a global overlay (see
+      // root _layout.tsx) open for a bit on its own; navigate right away
+      // while that overlay covers the transition, instead of waiting it
+      // out here and then cutting to /login right as it disappears.
+      void signOut();
+      router.replace("/login");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : (e as Error).message);
     } finally {
@@ -161,7 +162,6 @@ export default function DeleteAccountScreen() {
           <Text style={{ color: theme.textSecondary }}>Cancel</Text>
         </Pressable>
       </View>
-      {deleted && <SplashTransition />}
     </View>
   );
 }

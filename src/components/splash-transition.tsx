@@ -1,16 +1,25 @@
-import { Image, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Animated, Image, StyleSheet } from "react-native";
 
 /**
  * Reuses the exact native splash screen's background color + mark (see
  * app.json's expo-splash-screen plugin config) as a brief overlay during
  * "hard reset" moments — sign out, account deletion — so they feel like a
- * deliberate fresh start rather than an abrupt content swap.
+ * deliberate fresh start rather than an abrupt content swap. Fades in
+ * instead of popping in instantly, which otherwise reads as a jarring flash
+ * cut rather than a deliberate transition.
  */
 export function SplashTransition() {
+  const [opacity] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [opacity]);
+
   return (
-    <View style={[StyleSheet.absoluteFill, styles.container]}>
+    <Animated.View style={[StyleSheet.absoluteFill, styles.container, { opacity }]}>
       <Image source={require("../../assets/images/applogo.png")} style={styles.mark} resizeMode="contain" />
-    </View>
+    </Animated.View>
   );
 }
 

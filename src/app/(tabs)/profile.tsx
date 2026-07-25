@@ -11,7 +11,6 @@ import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
 import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
-import { SplashTransition } from "@/components/splash-transition";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
 export default function ProfileScreen() {
@@ -19,12 +18,11 @@ export default function ProfileScreen() {
   const { session, loading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
-    setSigningOut(true);
+    // signOut() itself holds a brief global overlay (see root _layout.tsx)
+    // while the tabs layout's own auth-gate redirect takes over navigation.
     await signOut();
-    setTimeout(() => router.replace("/login"), 500);
   }
 
   useEffect(() => {
@@ -95,7 +93,6 @@ export default function ProfileScreen() {
           <Text style={styles.dangerButtonText}>Delete account</Text>
         </Pressable>
       </ScrollView>
-      {signingOut && <SplashTransition />}
     </View>
   );
 }
