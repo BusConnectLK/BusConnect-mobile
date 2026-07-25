@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "lk.busconnect.app"
+      "bundleIdentifier": "lk.busconnect.app",
+      "appleTeamId": "B9Z73W94NU",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "lk.busconnect.app",
