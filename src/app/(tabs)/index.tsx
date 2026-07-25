@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { listLocations, type Location } from "@/lib/locations";
+import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popular-routes";
 import { Spacing } from "@/constants/theme";
 
 function todayIso() {
@@ -27,6 +28,7 @@ export default function SearchScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [picking, setPicking] = useState<"from" | "to" | null>(null);
   const [loading, setLoading] = useState(true);
+  const [popularRoutes, setPopularRoutes] = useState<PopularRoute[] | null>(null);
 
   const firstName = (session?.user.user_metadata?.full_name as string | undefined)?.split(" ")[0];
 
@@ -37,6 +39,7 @@ export default function SearchScreen() {
       setTo(data[1] ?? data[0] ?? null);
       setLoading(false);
     });
+    void listPopularRoutes(6).then(setPopularRoutes);
   }, []);
 
   function swap() {
@@ -49,6 +52,13 @@ export default function SearchScreen() {
     router.push({
       pathname: "/search-results",
       params: { from: from.id, to: to.id, date: date.toISOString().slice(0, 10) },
+    });
+  }
+
+  function searchRoute(route: PopularRoute) {
+    router.push({
+      pathname: "/search-results",
+      params: { from: route.originId, to: route.destId, date: todayIso() },
     });
   }
 
@@ -129,6 +139,40 @@ export default function SearchScreen() {
             </Pressable>
           </View>
         )}
+
+        {popularRoutes === null ? null : popularRoutes.length > 0 ? (
+          <View style={styles.popularSection}>
+            <Text style={[styles.popularTitle, { color: theme.text }]}>Popular routes</Text>
+            {popularRoutes.map((r) => (
+              <Pressable
+                key={`${r.originId}-${r.destId}`}
+                onPress={() => searchRoute(r)}
+                style={[styles.routeCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+              >
+                {r.imageUrl && <Image source={{ uri: r.imageUrl }} style={styles.routeCardImage} />}
+                <View style={styles.routeCardBody}>
+                  <View style={styles.routeCardHeading}>
+                    <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
+                      {r.originName}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={13} color={theme.textSecondary} />
+                    <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
+                      {r.destName}
+                    </Text>
+                  </View>
+                  <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 3 }}>
+                    {r.tripCount > 0
+                      ? `${r.tripCount} ${r.tripCount === 1 ? "trip" : "trips"} today${
+                          formatDuration(r.durationMinutes) ? ` · ${formatDuration(r.durationMinutes)}` : ""
+                        }`
+                      : "No buses scheduled today"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
 
       {showDatePicker && (
@@ -261,6 +305,20 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  popularSection: { marginTop: Spacing.five, paddingHorizontal: Spacing.four, gap: Spacing.two },
+  popularTitle: { fontSize: 18, fontWeight: "800", marginBottom: Spacing.one },
+  routeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
+  routeCardImage: { width: 48, height: 48, borderRadius: 10 },
+  routeCardBody: { flex: 1 },
+  routeCardHeading: { flexDirection: "row", alignItems: "center", gap: 6 },
+  routeCardText: { fontSize: 15, fontWeight: "700", flexShrink: 1 },
   overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: {
     position: "absolute",
