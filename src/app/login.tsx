@@ -88,7 +88,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, paddingTop: Spacing.six, alignItems: "center" },
+  container: { flex: 1, padding: Spacing.four, alignItems: "center", justifyContent: "center" },
   logo: { width: 64, height: 64, borderRadius: 16, marginBottom: Spacing.three },
   title: { fontSize: 24, fontWeight: "800", textAlign: "center" },
   subtitle: {

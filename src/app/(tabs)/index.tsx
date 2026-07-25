@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,8 +20,18 @@ import { listLocations, type Location } from "@/lib/locations";
 import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popular-routes";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
+// Date-only string in the device's local calendar day — NOT toISOString(),
+// which converts to UTC first and lands on the wrong day for anyone east of
+// UTC (e.g. Sri Lanka, UTC+5:30) between local midnight and the UTC rollover.
+function localDateIso(d: Date) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateIso(new Date());
 }
 
 function formatDate(d: Date) {
@@ -51,7 +71,7 @@ export default function SearchScreen() {
     if (!from || !to) return;
     router.push({
       pathname: "/search-results",
-      params: { from: from.id, to: to.id, date: date.toISOString().slice(0, 10) },
+      params: { from: from.id, to: to.id, date: localDateIso(date) },
     });
   }
 
@@ -170,7 +190,7 @@ export default function SearchScreen() {
         ) : null}
       </ScrollView>
 
-      {showDatePicker && (
+      {showDatePicker && Platform.OS === "android" && (
         <DateTimePicker
           value={date}
           mode="date"
@@ -180,6 +200,28 @@ export default function SearchScreen() {
             if (selected) setDate(selected);
           }}
         />
+      )}
+
+      {showDatePicker && Platform.OS === "ios" && (
+        <View style={StyleSheet.absoluteFill}>
+          <Pressable style={[StyleSheet.absoluteFill, styles.overlay]} onPress={() => setShowDatePicker(false)} />
+          <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
+            <View style={styles.datePickerHeader}>
+              <Pressable onPress={() => setShowDatePicker(false)} hitSlop={8}>
+                <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="inline"
+              minimumDate={new Date(todayIso())}
+              onChange={(_event, selected) => {
+                if (selected) setDate(selected);
+              }}
+            />
+          </View>
+        </View>
       )}
 
       {picking && (
@@ -311,6 +353,21 @@ const styles = StyleSheet.create({
   routeCardHeading: { flexDirection: "row", alignItems: "center", gap: 6 },
   routeCardText: { fontSize: 15, fontWeight: "700", flexShrink: 1 },
   overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
+  datePickerSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Spacing.six,
+  },
+  datePickerHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
   sheet: {
     position: "absolute",
     left: 0,

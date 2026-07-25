@@ -343,14 +343,12 @@ function SupportSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
       <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border, gap: 0 }]}>
         <Pressable onPress={() => void openStoreReview()} style={styles.linkRow}>
           <Ionicons name="star-outline" size={16} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}>Rate us</Text>
-          <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>Rate us</Text>
         </Pressable>
         <View style={[styles.compactDivider, { backgroundColor: theme.border }]} />
         <Pressable onPress={() => void openWhatsAppSupport()} style={styles.linkRow}>
           <Ionicons name="logo-whatsapp" size={16} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}>Help center</Text>
-          <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>Help center</Text>
         </Pressable>
       </View>
     </View>
@@ -448,7 +446,13 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.three },
   compactDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.half },
   toggleRow: { flexDirection: "row", alignItems: "center" },
-  linkRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, paddingVertical: Spacing.one },
+  linkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
   dangerButton: {
     flexDirection: "row",
     gap: 8,

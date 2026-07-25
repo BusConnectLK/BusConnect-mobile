@@ -140,7 +140,7 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, paddingTop: Spacing.six, alignItems: "center" },
+  container: { flex: 1, padding: Spacing.four, alignItems: "center", justifyContent: "center" },
   badge: { width: 60, height: 60, borderRadius: 20, alignItems: "center", justifyContent: "center", marginBottom: Spacing.three },
   title: { fontSize: 24, fontWeight: "800", textAlign: "center" },
   subtitle: { fontSize: 14, textAlign: "center", marginTop: Spacing.two, marginBottom: Spacing.five, lineHeight: 20, maxWidth: 300 },
