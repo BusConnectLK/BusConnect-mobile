@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { deleteMyAccount, ApiError } from "@/lib/api";
+import { SplashTransition } from "@/components/splash-transition";
 import { Spacing } from "@/constants/theme";
 
 /**
@@ -29,6 +30,7 @@ export default function DeleteAccountScreen() {
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState(false);
 
   async function sendCode() {
     if (!phone) return;
@@ -65,7 +67,8 @@ export default function DeleteAccountScreen() {
       if (!accessToken) throw new Error("Session expired — sign in again to delete your account.");
       await deleteMyAccount(accessToken);
       await signOut();
-      router.replace("/");
+      setDeleted(true);
+      setTimeout(() => router.replace("/login"), 500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : (e as Error).message);
     } finally {
@@ -158,6 +161,7 @@ export default function DeleteAccountScreen() {
           <Text style={{ color: theme.textSecondary }}>Cancel</Text>
         </Pressable>
       </View>
+      {deleted && <SplashTransition />}
     </View>
   );
 }

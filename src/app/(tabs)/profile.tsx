@@ -13,6 +13,7 @@ import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164 } from "@/lib/phone";
 import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
+import { SplashTransition } from "@/components/splash-transition";
 import { Spacing } from "@/constants/theme";
 
 export default function ProfileScreen() {
@@ -20,6 +21,13 @@ export default function ProfileScreen() {
   const { session, loading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    await signOut();
+    setTimeout(() => router.replace("/login"), 500);
+  }
 
   useEffect(() => {
     if (!session) return;
@@ -79,13 +87,7 @@ export default function ProfileScreen() {
         <PreferencesSection theme={theme} />
         <SupportSection theme={theme} />
 
-        <Pressable
-          onPress={() => {
-            void signOut();
-            router.replace("/");
-          }}
-          style={[styles.rowCard, { borderColor: theme.border }]}
-        >
+        <Pressable onPress={handleSignOut} style={[styles.rowCard, { borderColor: theme.border }]}>
           <Ionicons name="log-out-outline" size={17} color="#dc2626" />
           <Text style={{ color: "#dc2626", fontWeight: "600" }}>Sign out</Text>
         </Pressable>
@@ -99,6 +101,7 @@ export default function ProfileScreen() {
           <Text style={{ color: "#dc2626", fontWeight: "600" }}>Delete account</Text>
         </Pressable>
       </ScrollView>
+      {signingOut && <SplashTransition />}
     </View>
   );
 }
