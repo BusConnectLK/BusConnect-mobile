@@ -63,6 +63,11 @@ export default function LoginScreen() {
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
+
+        <Pressable onPress={() => router.push("/forgot-password")} style={{ marginTop: Spacing.two, alignSelf: "flex-end" }}>
+          <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}>Forgot password?</Text>
+        </Pressable>
+
         <Pressable
           onPress={signIn}
           disabled={loading || !phone || !password}
