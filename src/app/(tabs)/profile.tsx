@@ -342,15 +342,15 @@ function SupportSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
       <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Support</Text>
       <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border, gap: 0 }]}>
         <Pressable onPress={() => void openStoreReview()} style={styles.linkRow}>
-          <Ionicons name="star-outline" size={18} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15, flex: 1 }}>Rate us</Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+          <Ionicons name="star-outline" size={16} color={theme.textSecondary} />
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}>Rate us</Text>
+          <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
         </Pressable>
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <View style={[styles.compactDivider, { backgroundColor: theme.border }]} />
         <Pressable onPress={() => void openWhatsAppSupport()} style={styles.linkRow}>
-          <Ionicons name="logo-whatsapp" size={18} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15, flex: 1 }}>Help center</Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+          <Ionicons name="logo-whatsapp" size={16} color={theme.textSecondary} />
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14, flex: 1 }}>Help center</Text>
+          <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
         </Pressable>
       </View>
     </View>
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  readOnlyRow: { paddingVertical: Spacing.two, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  readOnlyRow: { paddingVertical: Spacing.three, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "700",
@@ -446,8 +446,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.three },
+  compactDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.half },
   toggleRow: { flexDirection: "row", alignItems: "center" },
-  linkRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, paddingVertical: Spacing.two },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, paddingVertical: Spacing.one },
   dangerButton: {
     flexDirection: "row",
     gap: 8,
