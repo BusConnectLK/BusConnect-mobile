@@ -1,5 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
-import { Stack } from "expo-router";
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth";
@@ -25,7 +24,7 @@ function InnerLayout() {
   return (
     <ThemeProvider value={resolvedScheme === "dark" ? DarkTheme : DefaultTheme}>
       <AuthProvider>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: "minimal" }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="login" options={{ headerShown: true, title: "Sign in" }} />
           <Stack.Screen name="signup" options={{ headerShown: true, title: "Sign up" }} />

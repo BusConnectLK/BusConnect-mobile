@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { listLocations, type Location } from "@/lib/locations";
 import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popular-routes";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BottomTabInset } from "@/constants/theme";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -242,7 +242,7 @@ function LocationPicker({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingBottom: Spacing.six },
+  scrollContent: { flexGrow: 1, paddingBottom: Spacing.six + BottomTabInset },
   hero: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,

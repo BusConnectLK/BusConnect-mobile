@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { listMyBookings, type MyBooking } from "@/lib/tickets";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BottomTabInset } from "@/constants/theme";
 
 type Tab = "confirmed" | "pending" | "cancelled";
 
@@ -53,50 +54,72 @@ export default function TicketsScreen() {
   // Refresh whenever this screen regains focus (e.g. back from checkout).
   useFocusEffect(load);
 
+  const hero = (
+    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+      <Text style={styles.heroTitle}>My Tickets</Text>
+      <Text style={styles.heroSubtitle}>Track your bookings and boarding passes.</Text>
+    </SafeAreaView>
+  );
+
   if (authLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator color={theme.brand} />
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+        </View>
       </View>
     );
   }
 
   if (!session) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Pressable onPress={() => router.push({ pathname: "/login", params: { next: "/tickets" } })}>
-          <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}>Sign in to see your tickets</Text>
-        </Pressable>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <Pressable onPress={() => router.push({ pathname: "/login", params: { next: "/tickets" } })}>
+            <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}>Sign in to see your tickets</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.textSecondary }}>{error}</Text>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+        </View>
       </View>
     );
   }
 
   if (!bookings) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator color={theme.brand} />
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+        </View>
       </View>
     );
   }
 
   if (bookings.length === 0) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background, gap: Spacing.three }]}>
-        <Text style={{ color: theme.textSecondary }}>You haven&apos;t booked any trips yet.</Text>
-        <Pressable
-          onPress={() => router.push("/")}
-          style={[styles.primaryButton, { backgroundColor: theme.brand }]}
-        >
-          <Text style={styles.primaryButtonText}>Search buses</Text>
-        </Pressable>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={[styles.center, { gap: Spacing.three }]}>
+          <Text style={{ color: theme.textSecondary }}>You haven&apos;t booked any trips yet.</Text>
+          <Pressable
+            onPress={() => router.push("/")}
+            style={[styles.primaryButton, { backgroundColor: theme.brand }]}
+          >
+            <Text style={styles.primaryButtonText}>Search buses</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -109,32 +132,35 @@ export default function TicketsScreen() {
   const shown = bookings.filter((b) => tabOf(b.status) === tab);
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.tabRow}>
-        {TABS.map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => setTab(t)}
-            style={[
-              styles.tabButton,
-              { backgroundColor: tab === t ? theme.brand : theme.backgroundElement, borderColor: theme.border },
-            ]}
-          >
-            <Text style={{ color: tab === t ? "#fff" : theme.text, fontWeight: "600", fontSize: 13 }}>
-              {TAB_LABEL[t]} {counts[t]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {shown.length === 0 ? (
-        <View style={[styles.emptyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          <Text style={{ color: theme.textSecondary }}>No {TAB_LABEL[tab].toLowerCase()} bookings.</Text>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {hero}
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.tabRow}>
+          {TABS.map((t) => (
+            <Pressable
+              key={t}
+              onPress={() => setTab(t)}
+              style={[
+                styles.tabButton,
+                { backgroundColor: tab === t ? theme.brand : theme.backgroundElement, borderColor: theme.border },
+              ]}
+            >
+              <Text style={{ color: tab === t ? "#fff" : theme.text, fontWeight: "600", fontSize: 13 }}>
+                {TAB_LABEL[t]} {counts[t]}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      ) : (
-        shown.map((b) => <TicketCard key={b.id} b={b} theme={theme} />)
-      )}
-    </ScrollView>
+
+        {shown.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            <Text style={{ color: theme.textSecondary }}>No {TAB_LABEL[tab].toLowerCase()} bookings.</Text>
+          </View>
+        ) : (
+          shown.map((b) => <TicketCard key={b.id} b={b} theme={theme} />)
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -232,7 +258,16 @@ function Stat({ label, value, theme }: { label: string; value: string; theme: Re
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: Spacing.four, gap: Spacing.three },
+  hero: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one },
+  container: { flexGrow: 1, padding: Spacing.four, paddingBottom: Spacing.four + BottomTabInset, gap: Spacing.three },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   tabRow: { flexDirection: "row", gap: Spacing.two },
   tabButton: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },

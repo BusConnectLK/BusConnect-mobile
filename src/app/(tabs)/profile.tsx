@@ -12,7 +12,7 @@ import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
 import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
 import { SplashTransition } from "@/components/splash-transition";
-import { Spacing } from "@/constants/theme";
+import { Spacing, BottomTabInset } from "@/constants/theme";
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -129,6 +129,7 @@ function ProfileForm({
   onSaved: (p: MyProfile) => void;
   theme: ReturnType<typeof useTheme>;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(profile.name ?? "");
   const [phone, setPhone] = useState(stripCountryCode(profile.phone));
   const [email, setEmail] = useState(profile.email ?? "");
@@ -142,6 +143,21 @@ function ProfileForm({
   // credential itself on phone-OTP sign-in — neither is safe to edit here.
   const emailLocked = provider === "google";
   const phoneLocked = provider === "phone";
+
+  function startEditing() {
+    setError(null);
+    setSaved(false);
+    setName(profile.name ?? "");
+    setPhone(stripCountryCode(profile.phone));
+    setEmail(profile.email ?? "");
+    setNic(profile.nic ?? "");
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setError(null);
+    setIsEditing(false);
+  }
 
   async function submit() {
     setError(null);
@@ -157,6 +173,7 @@ function ProfileForm({
       });
       onSaved(updated);
       setSaved(true);
+      setIsEditing(false);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not save changes.");
     } finally {
@@ -167,46 +184,97 @@ function ProfileForm({
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
+      <View style={styles.cardTitleRow}>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
+        {!isEditing && (
+          <Pressable onPress={startEditing} hitSlop={8} style={styles.editLink}>
+            <Ionicons name="pencil-outline" size={14} color={theme.brand} />
+            <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}>Edit</Text>
+          </Pressable>
+        )}
+      </View>
 
-      <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
+      {isEditing ? (
+        <>
+          <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
 
-      {!phoneLocked && (
-        <View style={{ marginTop: Spacing.three }}>
-          <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
-          <PhoneField value={phone} onChangeText={setPhone} />
+          {!phoneLocked && (
+            <View style={{ marginTop: Spacing.three }}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
+              <PhoneField value={phone} onChangeText={setPhone} />
+            </View>
+          )}
+
+          <Field
+            label="NIC"
+            value={nic}
+            onChangeText={setNic}
+            placeholder="200012345678 or 991234567V"
+            theme={theme}
+          />
+
+          {!emailLocked && (
+            <Field
+              label="Email address (optional)"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@email.lk"
+              keyboardType="email-address"
+              theme={theme}
+            />
+          )}
+
+          {error && <Text style={{ color: "#dc2626", marginTop: Spacing.two }}>{error}</Text>}
+
+          <View style={styles.editActionsRow}>
+            <Pressable
+              onPress={cancelEditing}
+              disabled={busy}
+              style={[styles.cancelButton, { borderColor: theme.border, opacity: busy ? 0.6 : 1 }]}
+            >
+              <Text style={{ color: theme.text, fontWeight: "600" }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={submit}
+              disabled={busy}
+              style={[styles.saveButton, { backgroundColor: theme.brand, opacity: busy ? 0.6 : 1, flex: 1, marginTop: 0 }]}
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{status ?? "Save changes"}</Text>}
+            </Pressable>
+          </View>
+        </>
+      ) : (
+        <View style={{ marginTop: Spacing.two }}>
+          <ReadOnlyRow label="Full name" value={profile.name} theme={theme} />
+          {!phoneLocked && (
+            <ReadOnlyRow label="Phone number" value={formatPhoneDisplay(profile.phone)} theme={theme} />
+          )}
+          <ReadOnlyRow label="NIC" value={profile.nic} theme={theme} />
+          {!emailLocked && <ReadOnlyRow label="Email address" value={profile.email} theme={theme} last />}
+          {saved && <Text style={{ color: "#059669", marginTop: Spacing.two }}>Saved.</Text>}
         </View>
       )}
+    </View>
+  );
+}
 
-      <Field
-        label="NIC"
-        value={nic}
-        onChangeText={setNic}
-        placeholder="200012345678 or 991234567V"
-        theme={theme}
-      />
-
-      {!emailLocked && (
-        <Field
-          label="Email address (optional)"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@email.lk"
-          keyboardType="email-address"
-          theme={theme}
-        />
-      )}
-
-      {error && <Text style={{ color: "#dc2626", marginTop: Spacing.two }}>{error}</Text>}
-      {saved && !error && <Text style={{ color: "#059669", marginTop: Spacing.two }}>Saved.</Text>}
-
-      <Pressable
-        onPress={submit}
-        disabled={busy}
-        style={[styles.saveButton, { backgroundColor: theme.brand, opacity: busy ? 0.6 : 1 }]}
-      >
-        {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{status ?? "Save changes"}</Text>}
-      </Pressable>
+function ReadOnlyRow({
+  label,
+  value,
+  theme,
+  last,
+}: {
+  label: string;
+  value: string | null | undefined;
+  theme: ReturnType<typeof useTheme>;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.readOnlyRow, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}>
+      <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }} numberOfLines={1}>
+        {value || "—"}
+      </Text>
     </View>
   );
 }
@@ -322,7 +390,7 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  scrollContent: { flexGrow: 1, paddingBottom: Spacing.six },
+  scrollContent: { flexGrow: 1, paddingBottom: Spacing.six + BottomTabInset },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   hero: {
     alignItems: "center",
@@ -344,6 +412,17 @@ const styles = StyleSheet.create({
   },
   cardTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { fontSize: 15, fontWeight: "700" },
+  editLink: { flexDirection: "row", alignItems: "center", gap: 4 },
+  editActionsRow: { flexDirection: "row", gap: Spacing.two, marginTop: Spacing.four },
+  cancelButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: Spacing.four,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  readOnlyRow: { paddingVertical: Spacing.two, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "700",
@@ -369,7 +448,7 @@ const styles = StyleSheet.create({
   },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.three },
   toggleRow: { flexDirection: "row", alignItems: "center" },
-  linkRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, paddingVertical: Spacing.three },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, paddingVertical: Spacing.two },
   dangerButton: {
     flexDirection: "row",
     gap: 8,
