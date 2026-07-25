@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTheme } from "@/hooks/use-theme";
+import { useThemeMode } from "@/lib/theme-mode-context";
 import { useAuth } from "@/lib/auth";
 import { listLocations, type Location } from "@/lib/locations";
 import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popular-routes";
@@ -40,6 +41,7 @@ function formatDate(d: Date) {
 
 export default function SearchScreen() {
   const theme = useTheme();
+  const { resolvedScheme } = useThemeMode();
   const { session } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [from, setFrom] = useState<Location | null>(null);
@@ -215,7 +217,10 @@ export default function SearchScreen() {
               value={date}
               mode="date"
               display="inline"
+              themeVariant={resolvedScheme}
+              accentColor={theme.brand}
               minimumDate={new Date(todayIso())}
+              style={styles.datePickerNative}
               onChange={(_event, selected) => {
                 if (selected) setDate(selected);
               }}
@@ -368,6 +373,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
+  datePickerNative: { alignSelf: "center", width: 340, height: 360 },
   sheet: {
     position: "absolute",
     left: 0,
