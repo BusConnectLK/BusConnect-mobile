@@ -78,7 +78,7 @@ export default function SearchScreen() {
           <View
             style={[
               styles.card,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.text },
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
             ]}
           >
             <View style={styles.routeRow}>
@@ -260,10 +260,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: Spacing.four,
     gap: Spacing.three,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 6,
   },
   routeRow: { flexDirection: "row", alignItems: "stretch" },
   dotsColumn: { width: 16, alignItems: "center", paddingVertical: 6 },

@@ -188,7 +188,6 @@ function ProfileForm({
         <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
         {!isEditing && (
           <Pressable onPress={startEditing} hitSlop={8} style={styles.editLink}>
-            <Ionicons name="pencil-outline" size={14} color={theme.brand} />
             <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}>Edit</Text>
           </Pressable>
         )}

@@ -26,9 +26,9 @@ function InnerLayout() {
       <AuthProvider>
         <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: "minimal" }}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="login" options={{ headerShown: true, title: "Sign in" }} />
-          <Stack.Screen name="signup" options={{ headerShown: true, title: "Sign up" }} />
-          <Stack.Screen name="forgot-password" options={{ headerShown: true, title: "Reset password" }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="signup" options={{ headerShown: false }} />
+          <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
           <Stack.Screen name="delete-account" options={{ headerShown: true, title: "Delete account" }} />
           <Stack.Screen name="search-results" options={{ headerShown: true, title: "Search results" }} />
           <Stack.Screen name="trips/[id]" options={{ headerShown: true, title: "Trip details" }} />

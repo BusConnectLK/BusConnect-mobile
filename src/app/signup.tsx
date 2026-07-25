@@ -1,5 +1,17 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
@@ -65,21 +77,24 @@ export default function SignUpScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <Image source={require("../../assets/images/applogo.png")} style={styles.logo} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={["top", "bottom"]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Image source={require("../../assets/images/applogo.png")} style={styles.logo} />
 
-      <Text style={[styles.title, { color: theme.text }]}>Create your account</Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        {stage === "details"
-          ? "Just a few details, then we'll verify your number with a one-time code."
-          : `Enter the code sent to ${toE164(phone)}.`}
-      </Text>
+          <Text style={[styles.title, { color: theme.text }]}>Create your account</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            {stage === "details"
+              ? "Just a few details, then we'll verify your number with a one-time code."
+              : `Enter the code sent to ${toE164(phone)}.`}
+          </Text>
 
-      <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        {stage === "details" ? (
+          <View style={styles.form}>
+            {stage === "details" ? (
           <>
             <Field icon="person-outline" label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
             <View style={{ marginBottom: Spacing.three }}>
@@ -153,8 +168,10 @@ export default function SignUpScreen() {
             Already have an account? <Text style={{ color: theme.brand, fontWeight: "700" }}>Sign in</Text>
           </Text>
         </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -203,18 +220,20 @@ function Field({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, paddingTop: Spacing.five, alignItems: "center" },
+  safeArea: { flex: 1 },
+  flex: { flex: 1 },
+  container: { flexGrow: 1, padding: Spacing.five, paddingTop: Spacing.six, alignItems: "center" },
   logo: { width: 64, height: 64, borderRadius: 16, marginBottom: Spacing.three },
-  title: { fontSize: 24, fontWeight: "800", textAlign: "center" },
+  title: { fontSize: 26, fontWeight: "800", textAlign: "center" },
   subtitle: {
     fontSize: 14,
     textAlign: "center",
     marginTop: Spacing.two,
-    marginBottom: Spacing.four,
+    marginBottom: Spacing.six,
     lineHeight: 20,
     maxWidth: 300,
   },
-  card: { width: "100%", borderWidth: 1, borderRadius: 20, padding: Spacing.four },
+  form: { width: "100%" },
   fieldLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   inputWrap: {
     flexDirection: "row",

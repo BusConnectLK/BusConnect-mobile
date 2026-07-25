@@ -1,11 +1,26 @@
-import { Tabs } from "expo-router";
+import { ActivityIndicator, View } from "react-native";
+import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/use-theme";
+import { useAuth } from "@/lib/auth";
 
 export default function TabsLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.background }}>
+        <ActivityIndicator color={theme.brand} />
+      </View>
+    );
+  }
+
+  if (!session) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs
@@ -15,18 +30,20 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
           position: "absolute",
-          left: 16,
-          right: 16,
-          bottom: Math.max(insets.bottom, 12),
-          height: 64,
-          borderRadius: 24,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
           borderTopWidth: 0,
           backgroundColor: theme.backgroundElement,
           paddingTop: 10,
           shadowColor: "#000",
           shadowOpacity: 0.12,
           shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
+          shadowOffset: { width: 0, height: -2 },
           elevation: 8,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
