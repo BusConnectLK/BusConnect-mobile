@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { getBooking, cancelBooking, ApiError, type Booking } from "@/lib/api";
@@ -55,18 +57,33 @@ export default function TicketScreen() {
     };
   }, [id, session]);
 
+  const hero = (
+    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+        <Ionicons name="chevron-back" size={22} color="#fff" />
+      </Pressable>
+      <Text style={styles.heroTitle}>Your ticket</Text>
+    </SafeAreaView>
+  );
+
   if (error) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.textSecondary }}>{error}</Text>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+        </View>
       </View>
     );
   }
 
   if (!booking) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator color={theme.brand} />
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+        </View>
       </View>
     );
   }
@@ -105,7 +122,9 @@ export default function TicketScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {hero}
+      <ScrollView contentContainerStyle={styles.container}>
       <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
         <Text style={[styles.status, { color: confirmed ? "#16a34a" : "#c17a1f" }]}>
           {confirmed ? "Confirmed" : booking.status === "pending" ? "Payment pending…" : booking.status}
@@ -153,13 +172,23 @@ export default function TicketScreen() {
           )}
         </Pressable>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: Spacing.four },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  hero: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  backButton: { alignSelf: "flex-start", marginBottom: Spacing.two },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
   card: { borderWidth: 1, borderRadius: 16, padding: Spacing.four, gap: Spacing.two },
   status: { fontSize: 16, fontWeight: "800", textAlign: "center", marginBottom: Spacing.three },
   qrWrap: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.four },

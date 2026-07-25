@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { checkoutBooking, ApiError, type WebXPayCheckout } from "@/lib/api";
+import { Spacing } from "@/constants/theme";
 
 /** A minimal HTML page that auto-submits WebXPay's hosted-checkout form —
  * mirrors exactly what BusConnect-web's pay-button.tsx does with a real DOM
@@ -45,38 +48,67 @@ export default function CheckoutScreen() {
     }
   }
 
+  const hero = (
+    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+      <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Ionicons name="chevron-back" size={22} color="#fff" />
+      </Pressable>
+      <Text style={styles.heroTitle}>Payment</Text>
+      <View style={{ width: 22 }} />
+    </SafeAreaView>
+  );
+
   if (error) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.textSecondary }}>{error}</Text>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+        </View>
       </View>
     );
   }
 
   if (!checkout) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator color={theme.brand} />
-        <Text style={{ color: theme.textSecondary, marginTop: 12 }}>Redirecting to WebXPay…</Text>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+          <Text style={{ color: theme.textSecondary, marginTop: 12 }}>Redirecting to WebXPay…</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <WebView
-      source={{ html: checkoutHtml(checkout) }}
-      onNavigationStateChange={onNavigate}
-      onShouldStartLoadWithRequest={(req) => {
-        if (id && req.url.includes(`/bookings/${id}`)) {
-          router.replace({ pathname: "/bookings/[id]", params: { id } });
-          return false;
-        }
-        return true;
-      }}
-    />
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {hero}
+      <WebView
+        style={{ flex: 1 }}
+        source={{ html: checkoutHtml(checkout) }}
+        onNavigationStateChange={onNavigate}
+        onShouldStartLoadWithRequest={(req) => {
+          if (id && req.url.includes(`/bookings/${id}`)) {
+            router.replace({ pathname: "/bookings/[id]", params: { id } });
+            return false;
+          }
+          return true;
+        }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  hero: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+  },
+  heroTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
 });

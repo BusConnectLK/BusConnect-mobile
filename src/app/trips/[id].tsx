@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -8,6 +9,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
@@ -15,16 +18,23 @@ import { supabase } from "@/lib/supabase";
 import {
   getTrip,
   getSeatmap,
+  getTripCrew,
   createHold,
   createBooking,
   ApiError,
   type TripDetail,
   type SeatMap,
   type SeatState,
+  type TripCrew,
+  type CrewMember,
 } from "@/lib/api";
 import { layoutToGrid } from "@/lib/seat-layout";
 import { LiveMap } from "@/components/live-map";
 import { Spacing } from "@/constants/theme";
+
+function formatTripTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit" });
+}
 
 const SEAT_COLOR = {
   male: "#1e3a5f",
@@ -40,6 +50,7 @@ export default function TripDetailScreen() {
 
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [seatmap, setSeatmap] = useState<SeatMap | null>(null);
+  const [crew, setCrew] = useState<TripCrew | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [genders, setGenders] = useState<Map<string, "male" | "female">>(new Map());
@@ -54,6 +65,9 @@ export default function TripDetailScreen() {
         setSeatmap(s);
       })
       .catch(() => setError("Could not load this trip."));
+    getTripCrew(id)
+      .then(setCrew)
+      .catch(() => void 0);
   }, [id]);
 
   // Live seat updates via Supabase Realtime, same pattern as the web app.
@@ -87,6 +101,15 @@ export default function TripDetailScreen() {
 
   const fare = trip?.fares.find((f) => f.from_stop_id === from && f.to_stop_id === to)?.fare ?? trip?.base_fare ?? 0;
   const total = selected.size * fare;
+
+  const stops = useMemo(() => [...(trip?.stops ?? [])].sort((a, b) => a.seq - b.seq), [trip]);
+  // Fall back to the route's full endpoints when opened directly with no
+  // ?from=&to= (e.g. a shared/bookmarked link), same as the web app.
+  const fromStopId = (from && stops.some((s) => s.route_stop_id === from) ? from : stops[0]?.route_stop_id) ?? "";
+  const toStopId =
+    (to && stops.some((s) => s.route_stop_id === to) ? to : stops[stops.length - 1]?.route_stop_id) ?? "";
+  const boardStop = stops.find((s) => s.route_stop_id === fromStopId);
+  const dropStop = stops.find((s) => s.route_stop_id === toStopId);
 
   function seatKind(label: string): "available" | "selected" | "male" | "female" | "pending" | "blocked" {
     if (selected.has(label)) return "selected";
@@ -155,36 +178,153 @@ export default function TripDetailScreen() {
     }
   }
 
+  const hero = (
+    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+        <Ionicons name="chevron-back" size={22} color="#fff" />
+      </Pressable>
+      <Text style={styles.heroTitle}>{trip?.bus.operator?.name ?? "Trip details"}</Text>
+      {trip && (
+        <>
+          <Text style={styles.heroSubtitle}>
+            {trip.bus.bus_type.name} · {trip.bus.reg_no}
+          </Text>
+          <View style={styles.heroBadgeRow}>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>{trip.bus.bus_type.class.replace("_", " ")}</Text>
+            </View>
+            <View style={styles.heroBadge}>
+              <Ionicons name="star" size={11} color="#fde68a" />
+              <Text style={styles.heroBadgeText}>{(trip.bus.operator?.rating ?? 0).toFixed(1)}</Text>
+            </View>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>
+                {(trip.bus.operator?.reliability_score ?? 0).toFixed(0)}% on-time
+              </Text>
+            </View>
+          </View>
+        </>
+      )}
+    </SafeAreaView>
+  );
+
   if (error && !trip) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.textSecondary }}>{error}</Text>
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+        </View>
       </View>
     );
   }
 
   if (!trip) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator color={theme.brand} />
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {hero}
       <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: 140 }}>
-        <Text style={[styles.busName, { color: theme.text }]}>{trip.bus.operator?.name}</Text>
-        <Text style={{ color: theme.textSecondary, marginTop: 2 }}>
-          {trip.bus.bus_type.name} · {trip.bus.reg_no}
-        </Text>
-
         <View style={{ marginTop: Spacing.three }}>
           <LiveMap
             tripId={trip.id}
             stopId={from ?? ""}
             active={trip.status === "boarding" || trip.status === "departed"}
           />
+        </View>
+
+        <View
+          style={[styles.journeyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+        >
+          <Text style={[styles.journeyTitle, { color: theme.text }]}>Your journey</Text>
+          {boardStop && dropStop && (
+            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4 }}>
+              Boarding at <Text style={{ fontWeight: "700", color: theme.text }}>{boardStop.location_name}</Text>,
+              dropping at <Text style={{ fontWeight: "700", color: theme.text }}>{dropStop.location_name}</Text>
+            </Text>
+          )}
+
+          <View style={{ marginTop: Spacing.three }}>
+            {stops.map((s) => {
+              const isBoard = s.route_stop_id === fromStopId;
+              const isDrop = s.route_stop_id === toStopId;
+              const inSegment = !!(boardStop && dropStop && s.seq >= boardStop.seq && s.seq <= dropStop.seq);
+              const dotColor = isBoard || isDrop ? theme.brand : inSegment ? theme.textSecondary : theme.border;
+              return (
+                <View key={s.route_stop_id} style={styles.stopRow}>
+                  <View style={styles.stopDotCol}>
+                    <View style={[styles.stopDot, { borderColor: dotColor }]} />
+                    {s.seq < stops.length && <View style={[styles.stopLine, { backgroundColor: theme.border }]} />}
+                  </View>
+                  <View style={{ flex: 1, marginBottom: Spacing.three }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <Text
+                        style={{
+                          color: inSegment ? theme.text : theme.textSecondary,
+                          fontWeight: "600",
+                          fontSize: 14,
+                        }}
+                      >
+                        {s.location_name}
+                      </Text>
+                      {isBoard && (
+                        <View style={[styles.stopTag, { backgroundColor: "#d1fae5" }]}>
+                          <Text style={{ color: "#047857", fontSize: 9, fontWeight: "700" }}>BOARD</Text>
+                        </View>
+                      )}
+                      {isDrop && (
+                        <View style={[styles.stopTag, { backgroundColor: "#dbeafe" }]}>
+                          <Text style={{ color: "#1d4ed8", fontSize: 9, fontWeight: "700" }}>DROP</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 1 }}>
+                      {s.scheduled_at ? formatTripTime(s.scheduled_at) : "—"}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          {trip.bus.amenities.length > 0 && (
+            <View style={[styles.journeySection, { borderTopColor: theme.border }]}>
+              <Text style={[styles.journeySectionLabel, { color: theme.textSecondary }]}>On board</Text>
+              <View style={styles.amenitiesWrap}>
+                {trip.bus.amenities.map((a) => (
+                  <View key={a} style={[styles.amenityChip, { backgroundColor: theme.backgroundSelected }]}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 11 }}>{a}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {(crew?.driver || crew?.conductor) && (
+            <View style={[styles.journeySection, { borderTopColor: theme.border }]}>
+              <Text style={[styles.journeySectionLabel, { color: theme.textSecondary }]}>Your crew</Text>
+              <View style={{ flexDirection: "row", gap: Spacing.four, marginTop: Spacing.two, flexWrap: "wrap" }}>
+                {crew.driver && <CrewBadge role="Driver" member={crew.driver} theme={theme} />}
+                {crew.conductor && <CrewBadge role="Conductor" member={crew.conductor} theme={theme} />}
+              </View>
+            </View>
+          )}
+
+          <View style={[styles.journeySection, styles.trustRow, { borderTopColor: theme.border }]}>
+            <Ionicons name="shield-checkmark" size={15} color="#10b981" />
+            <Text style={{ color: theme.textSecondary, fontSize: 11 }}>
+              Secure checkout · Instant e-ticket · QR boarding
+            </Text>
+          </View>
         </View>
 
         <View style={styles.legend}>
@@ -291,9 +431,76 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
   );
 }
 
+function CrewBadge({
+  role,
+  member,
+  theme,
+}: {
+  role: string;
+  member: CrewMember;
+  theme: ReturnType<typeof useTheme>;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.two }}>
+      {member.photoUrl ? (
+        <Image source={{ uri: member.photoUrl }} style={styles.crewPhoto} />
+      ) : (
+        <View style={[styles.crewPhoto, styles.crewPhotoFallback, { borderColor: theme.border }]}>
+          <Ionicons name="person" size={16} color={theme.textSecondary} />
+        </View>
+      )}
+      <View>
+        <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>
+          {role}
+        </Text>
+        <Text style={{ color: theme.text, fontSize: 13, fontWeight: "600" }}>{member.name}</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  busName: { fontSize: 20, fontWeight: "800" },
+  hero: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  backButton: { alignSelf: "flex-start", marginBottom: Spacing.two },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one },
+  heroBadgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.three },
+  heroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  heroBadgeText: { color: "#fff", fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
+  journeyCard: {
+    marginTop: Spacing.three,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.three,
+  },
+  journeyTitle: { fontSize: 15, fontWeight: "700" },
+  stopRow: { flexDirection: "row", gap: Spacing.two },
+  stopDotCol: { alignItems: "center", width: 14 },
+  stopDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
+  stopLine: { width: 1, flex: 1, marginVertical: 3 },
+  stopTag: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
+  journeySection: { marginTop: Spacing.three, paddingTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth },
+  journeySectionLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  amenitiesWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.two },
+  amenityChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  trustRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
+  crewPhoto: { width: 36, height: 36, borderRadius: 18 },
+  crewPhotoFallback: { alignItems: "center", justifyContent: "center", borderWidth: 1 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.three, marginTop: Spacing.three, marginBottom: Spacing.three },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendSwatch: { width: 12, height: 12, borderRadius: 4, borderWidth: 1 },

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
@@ -93,11 +94,18 @@ export default function DeleteAccountScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
+        </Pressable>
+        <Text style={styles.heroTitle}>Delete account</Text>
+      </SafeAreaView>
+
+      <ScrollView contentContainerStyle={styles.container}>
       <View style={[styles.badge, { backgroundColor: "#fee2e2" }]}>
         <Ionicons name="trash-outline" size={26} color="#dc2626" />
       </View>
-      <Text style={[styles.title, { color: theme.text }]}>Delete account</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
         This will permanently remove your personal details. Booking and payment history is kept for records and
         can&apos;t be recovered afterwards.
@@ -162,14 +170,23 @@ export default function DeleteAccountScreen() {
           <Text style={{ color: theme.textSecondary }}>Cancel</Text>
         </Pressable>
       </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.four, paddingTop: Spacing.five, alignItems: "center" },
+  hero: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  backButton: { alignSelf: "flex-start", marginBottom: Spacing.two },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  container: { flexGrow: 1, padding: Spacing.four, paddingTop: Spacing.five, alignItems: "center" },
   badge: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: Spacing.three },
-  title: { fontSize: 22, fontWeight: "800", textAlign: "center" },
   subtitle: { fontSize: 14, textAlign: "center", marginTop: Spacing.two, marginBottom: Spacing.five, lineHeight: 20, maxWidth: 320 },
   card: { width: "100%", borderWidth: 1, borderRadius: 20, padding: Spacing.four },
   fieldLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
