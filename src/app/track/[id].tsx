@@ -1,19 +1,34 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
-import { getTripRoute, getTripLive, ApiError, type TripRoute, type TripLive } from "@/lib/api";
+import {
+  getTripRoute,
+  getTripLive,
+  getTrip,
+  getTripCrew,
+  ApiError,
+  type TripRoute,
+  type TripLive,
+  type TripDetail,
+  type TripCrew,
+  type CrewMember,
+} from "@/lib/api";
 import { TrackingMap, type BusPosition } from "@/components/tracking-map";
 import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
 const STALE_MS = 35_000; // no fresh point for this long → "reconnecting"
 const POLL_MS = 20_000; // safety net behind realtime
+const CREW_REFRESH_MS = 4 * 60 * 1000; // crew photo URLs are signed for 300s
+const NOTIFY_ETA_MIN = 3; // fire the "almost here" alert at this ETA or below
 
 type SheetTone = "live" | "paused" | "stale" | "idle";
+type Theme = ReturnType<typeof useTheme>;
 
 export default function TrackScreen() {
   const theme = useTheme();
@@ -28,6 +43,10 @@ export default function TrackScreen() {
   const [live, setLive] = useState<TripLive | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [tripDetail, setTripDetail] = useState<TripDetail | null>(null);
+  const [crew, setCrew] = useState<TripCrew | null>(null);
+  const [notifyNear, setNotifyNear] = useState(false);
+  const notifiedRef = useRef(false);
 
   // Route line + stops — fetched once, static.
   useEffect(() => {
@@ -36,6 +55,52 @@ export default function TrackScreen() {
       .then(setRoute)
       .catch((e) => setError(e instanceof ApiError ? e.message : "Could not load the route."));
   }, [id]);
+
+  // Bus/operator details — fetched once, static for the trip.
+  useEffect(() => {
+    if (!id) return;
+    getTrip(id)
+      .then(setTripDetail)
+      .catch(() => {
+        /* the info card just stays hidden if this fails — not critical */
+      });
+  }, [id]);
+
+  // Driver/conductor — the profile photo is a 5-min signed URL, so refresh
+  // it periodically instead of fetching once and letting the image break.
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    function load() {
+      getTripCrew(id)
+        .then((c) => {
+          if (active) setCrew(c);
+        })
+        .catch(() => {
+          /* crew card just stays hidden if this fails */
+        });
+    }
+    load();
+    const interval = setInterval(load, CREW_REFRESH_MS);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [id]);
+
+  // Reset the "almost here" alert when tracking a different trip.
+  useEffect(() => {
+    notifiedRef.current = false;
+  }, [id]);
+
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      void Notifications.setNotificationChannelAsync("proximity", {
+        name: "Bus arrival alerts",
+        importance: Notifications.AndroidImportance.HIGH,
+      });
+    }
+  }, []);
 
   // Live position + status/sharing — an initial fetch, then re-fetched on every
   // realtime event (new GPS point or a status/sharing change) instead of
@@ -87,6 +152,34 @@ export default function TrackScreen() {
 
   const sheet = useMemo(() => deriveSheet(live, boardingName, now), [live, boardingName, now]);
 
+  const toggleNotify = useCallback(async () => {
+    if (!notifyNear) {
+      const perm = await Notifications.requestPermissionsAsync();
+      if (perm.status !== "granted") return;
+    }
+    setNotifyNear((v) => !v);
+    notifiedRef.current = false;
+  }, [notifyNear]);
+
+  // Fires once per trip when the ETA first drops to the threshold — a ref
+  // flag (not state) tracks "already sent" so this can't re-fire on every
+  // subsequent live update while still under the threshold.
+  useEffect(() => {
+    if (!notifyNear || notifiedRef.current) return;
+    if (sheet.tone !== "live" || sheet.etaMinutes == null) return;
+    if (sheet.etaMinutes > NOTIFY_ETA_MIN) return;
+    notifiedRef.current = true;
+    void Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Your bus is almost here",
+        body: boardingName
+          ? `Arriving at ${boardingName} in about ${sheet.etaMinutes} min.`
+          : `Arriving in about ${sheet.etaMinutes} min.`,
+      },
+      trigger: null,
+    });
+  }, [notifyNear, sheet.tone, sheet.etaMinutes, boardingName]);
+
   if (error && !route) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
@@ -133,8 +226,28 @@ export default function TrackScreen() {
           <View style={[styles.grabber, { backgroundColor: theme.border }]} />
 
           <View style={styles.statusRow}>
-            <StatusDot tone={sheet.tone} />
-            <Text style={[styles.statusLabel, { color: toneColor(sheet.tone) }]}>{sheet.label}</Text>
+            <View style={styles.statusRowLeft}>
+              <StatusDot tone={sheet.tone} />
+              <Text style={[styles.statusLabel, { color: toneColor(sheet.tone) }]}>{sheet.label}</Text>
+            </View>
+            <Pressable
+              onPress={toggleNotify}
+              hitSlop={8}
+              style={[
+                styles.notifyBtn,
+                { borderColor: notifyNear ? theme.brand : theme.border },
+                notifyNear && { backgroundColor: theme.brandSoft },
+              ]}
+            >
+              <Ionicons
+                name={notifyNear ? "notifications" : "notifications-outline"}
+                size={13}
+                color={notifyNear ? theme.brand : theme.textSecondary}
+              />
+              <Text style={[styles.notifyBtnText, { color: notifyNear ? theme.brand : theme.textSecondary }]}>
+                {notifyNear ? "Notifying" : "Notify me"}
+              </Text>
+            </Pressable>
           </View>
 
           {sheet.etaMinutes != null ? (
@@ -155,13 +268,54 @@ export default function TrackScreen() {
             <Ionicons name="bus-outline" size={15} color={theme.textSecondary} />
             <Text style={{ color: theme.textSecondary, fontSize: 13, flex: 1 }} numberOfLines={1}>
               {operatorName ?? "Your bus"}
+              {tripDetail ? ` · ${tripDetail.bus.reg_no}` : ""}
             </Text>
             {sheet.speedKmh != null ? (
               <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{sheet.speedKmh} km/h</Text>
             ) : null}
           </View>
+
+          {(crew?.driver || crew?.conductor || tripDetail?.bus.amenities.length) && (
+            <View style={styles.infoCard}>
+              {(crew?.driver || crew?.conductor) && (
+                <View style={styles.crewRow}>
+                  {crew?.driver && <CrewChip label="Driver" member={crew.driver} theme={theme} />}
+                  {crew?.conductor && <CrewChip label="Conductor" member={crew.conductor} theme={theme} />}
+                </View>
+              )}
+              {tripDetail?.bus.amenities.length ? (
+                <View style={styles.chipsRow}>
+                  {tripDetail.bus.amenities.slice(0, 5).map((a) => (
+                    <View key={a} style={[styles.chip, { backgroundColor: theme.brandSoft }]}>
+                      <Text style={[styles.chipText, { color: theme.brand }]}>{a}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          )}
         </View>
       </SafeAreaView>
+    </View>
+  );
+}
+
+function CrewChip({ label, member, theme }: { label: string; member: CrewMember; theme: Theme }) {
+  return (
+    <View style={styles.crewChip}>
+      {member.photoUrl ? (
+        <Image source={{ uri: member.photoUrl }} style={styles.crewAvatar} />
+      ) : (
+        <View style={[styles.crewAvatar, styles.crewAvatarPlaceholder, { backgroundColor: theme.brandSoft }]}>
+          <Ionicons name="person" size={14} color={theme.brand} />
+        </View>
+      )}
+      <View style={{ flexShrink: 1 }}>
+        <Text style={[styles.crewLabel, { color: theme.textSecondary }]}>{label}</Text>
+        <Text style={[styles.crewName, { color: theme.text }]} numberOfLines={1}>
+          {member.name}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -297,7 +451,18 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: Spacing.three },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  statusRowLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+  notifyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  notifyBtnText: { fontSize: 11, fontWeight: "700" },
   dot: { width: 8, height: 8, borderRadius: 4 },
   statusLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
   heroRow: { flexDirection: "row", alignItems: "baseline", marginTop: Spacing.two },
@@ -314,4 +479,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  infoCard: { marginTop: Spacing.three, gap: Spacing.two },
+  crewRow: { flexDirection: "row", gap: Spacing.four },
+  crewChip: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+  crewAvatar: { width: 32, height: 32, borderRadius: 16 },
+  crewAvatarPlaceholder: { alignItems: "center", justifyContent: "center" },
+  crewLabel: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
+  crewName: { fontSize: 13, fontWeight: "600" },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
+  chipText: { fontSize: 11, fontWeight: "700", textTransform: "capitalize" },
 });
