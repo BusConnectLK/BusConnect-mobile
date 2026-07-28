@@ -336,3 +336,25 @@ export function updateMyProfile(accessToken: string, input: UpdateMyProfileInput
 export function deleteMyAccount(accessToken: string) {
   return request<{ ok: boolean }>("/me/account", { method: "DELETE", accessToken });
 }
+
+export type PushApp = "passenger" | "pilot";
+export type PushPlatform = "ios" | "android";
+
+export function registerPushToken(
+  accessToken: string,
+  body: { token: string; platform: PushPlatform; app: PushApp },
+) {
+  return request<{ ok: true }>("/notifications/push-token", {
+    method: "POST",
+    body: JSON.stringify(body),
+    accessToken,
+  });
+}
+
+export function unregisterPushToken(accessToken: string, token: string) {
+  return request<{ ok: true }>("/notifications/push-token", {
+    method: "DELETE",
+    body: JSON.stringify({ token }),
+    accessToken,
+  });
+}

@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { registerForPushNotifications, unregisterCurrentPushToken } from "./push-notifications";
 
 interface AuthContextValue {
   session: Session | null;
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
+  const pushRegisteredForUser = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -35,8 +37,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Register the device's push token once per signed-in user — not on every
+  // token refresh (onAuthStateChange fires repeatedly for the same user).
+  useEffect(() => {
+    if (!session || pushRegisteredForUser.current === session.user.id) return;
+    pushRegisteredForUser.current = session.user.id;
+    void registerForPushNotifications(session.access_token);
+  }, [session]);
+
   async function signOut() {
     setSigningOut(true);
+    if (session) await unregisterCurrentPushToken(session.access_token);
+    pushRegisteredForUser.current = null;
     await supabase.auth.signOut();
     // Hold the overlay a beat after the auth state flips so the redirect to
     // /login resolves underneath it, instead of appearing as an abrupt cut.

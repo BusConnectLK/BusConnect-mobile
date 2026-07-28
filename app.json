@@ -54,6 +54,12 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "color": "#004AAD"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
