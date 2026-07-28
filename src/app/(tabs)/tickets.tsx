@@ -10,12 +10,14 @@ import { listMyBookings, type MyBooking } from "@/lib/tickets";
 import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
-type Tab = "confirmed" | "pending" | "cancelled";
+type Tab = "confirmed" | "cancelled";
 
-function tabOf(status: string): Tab {
+/** Unpaid bookings (pending/reserved_unpaid) aren't shown at all — the API
+ *  query already excludes them, this is just the display-side mapping. */
+function tabOf(status: string): Tab | null {
   if (status === "confirmed") return "confirmed";
   if (status === "cancelled" || status === "refunded") return "cancelled";
-  return "pending";
+  return null;
 }
 
 function money(n: number) {
@@ -35,8 +37,8 @@ function dateOnly(iso: string) {
   return new Date(iso).toLocaleDateString("en-LK", { day: "numeric", month: "short", year: "numeric" });
 }
 
-const TAB_LABEL: Record<Tab, string> = { confirmed: "Confirmed", pending: "Pending", cancelled: "Cancelled" };
-const TABS: Tab[] = ["confirmed", "pending", "cancelled"];
+const TAB_LABEL: Record<Tab, string> = { confirmed: "Confirmed", cancelled: "Cancelled" };
+const TABS: Tab[] = ["confirmed", "cancelled"];
 
 export default function TicketsScreen() {
   const theme = useTheme();
@@ -128,12 +130,12 @@ export default function TicketsScreen() {
     );
   }
 
+  const visible = bookings.filter((b) => tabOf(b.status) !== null);
   const counts: Record<Tab, number> = {
-    confirmed: bookings.filter((b) => tabOf(b.status) === "confirmed").length,
-    pending: bookings.filter((b) => tabOf(b.status) === "pending").length,
-    cancelled: bookings.filter((b) => tabOf(b.status) === "cancelled").length,
+    confirmed: visible.filter((b) => tabOf(b.status) === "confirmed").length,
+    cancelled: visible.filter((b) => tabOf(b.status) === "cancelled").length,
   };
-  const shown = bookings.filter((b) => tabOf(b.status) === tab);
+  const shown = visible.filter((b) => tabOf(b.status) === tab);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -161,16 +163,15 @@ export default function TicketsScreen() {
             <Text style={{ color: theme.textSecondary }}>No {TAB_LABEL[tab].toLowerCase()} bookings.</Text>
           </View>
         ) : (
-          shown.map((b) => <TicketCard key={b.id} b={b} theme={theme} />)
+          shown.map((b) => <TicketCard key={b.id} b={b} t={tab} theme={theme} />)
         )}
       </ScrollView>
     </View>
   );
 }
 
-function TicketCard({ b, theme }: { b: MyBooking; theme: ReturnType<typeof useTheme> }) {
+function TicketCard({ b, t, theme }: { b: MyBooking; t: Tab; theme: ReturnType<typeof useTheme> }) {
   const [open, setOpen] = useState(false);
-  const t = tabOf(b.status);
   const boarded = b.ticketStatus === "used";
 
   return (
@@ -223,13 +224,6 @@ function TicketCard({ b, theme }: { b: MyBooking; theme: ReturnType<typeof useTh
               </Pressable>
             )}
           </View>
-        ) : t === "pending" ? (
-          <Pressable
-            onPress={() => router.push(`/checkout/${b.id}`)}
-            style={[styles.primaryButton, { backgroundColor: theme.brand, alignSelf: "flex-start" }]}
-          >
-            <Text style={styles.primaryButtonText}>Pay now</Text>
-          </Pressable>
         ) : (
           <Pressable
             onPress={() => router.push(`/bookings/${b.id}`)}
@@ -257,7 +251,6 @@ function TicketCard({ b, theme }: { b: MyBooking; theme: ReturnType<typeof useTh
 function Badge({ label, tone }: { label: string; tone: Tab | "class" }) {
   const colors: Record<string, { bg: string; fg: string }> = {
     confirmed: { bg: "#d1fae5", fg: "#047857" },
-    pending: { bg: "#fef3c7", fg: "#b45309" },
     cancelled: { bg: "#e4e4e7", fg: "#52525b" },
     class: { bg: "#e6eefb", fg: "#004aad" },
   };

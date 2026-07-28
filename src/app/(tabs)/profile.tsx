@@ -453,9 +453,8 @@ const styles = StyleSheet.create({
   linkRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: Spacing.two,
-    paddingVertical: Spacing.one,
+    paddingVertical: Spacing.two,
   },
   dangerButton: {
     flexDirection: "row",

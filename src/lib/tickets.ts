@@ -50,6 +50,9 @@ interface BookingRow {
 }
 
 export async function listMyBookings(): Promise<MyBooking[]> {
+  // Unpaid bookings (pending/reserved_unpaid) never surface here — a
+  // booking only belongs in "my tickets" once it's confirmed or explicitly
+  // cancelled.
   const { data, error } = await supabase
     .from("bookings")
     .select(
@@ -60,6 +63,7 @@ export async function listMyBookings(): Promise<MyBooking[]> {
            operator:operators ( name, logo_url ) ) ),
        tickets ( qr_signature, status )`,
     )
+    .in("status", ["confirmed", "cancelled", "refunded"])
     .order("created_at", { ascending: false });
 
   if (error) throw error;
