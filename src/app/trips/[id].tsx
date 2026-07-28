@@ -38,9 +38,9 @@ function formatTripTime(iso: string) {
 }
 
 const SEAT_COLOR = {
-  male: "#1e3a5f",
-  female: "#7a2048",
-  pending: "#c17a1f",
+  male: "#2563eb",
+  female: "#ec4899",
+  pending: "#eab308",
   blocked: "#6b7280",
 };
 
