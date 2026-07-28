@@ -18,6 +18,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { updateMyProfile } from "@/lib/api";
 import { PhoneField } from "@/components/phone-field";
+import { Banner } from "@/components/banner";
 import { toE164 } from "@/lib/phone";
 import { Spacing } from "@/constants/theme";
 
@@ -121,7 +122,7 @@ export default function SignUpScreen() {
               theme={theme}
             />
 
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={createAccount}
               disabled={loading || !name || !phone || !password}
@@ -146,7 +147,7 @@ export default function SignUpScreen() {
               letterSpacing={6}
               theme={theme}
             />
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={verifyAndFinish}
               disabled={loading || !otp}
@@ -246,5 +247,4 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
   button: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: Spacing.one },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  error: { color: "#dc2626", marginBottom: Spacing.three, fontSize: 13 },
 });

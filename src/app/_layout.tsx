@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeModeProvider, useThemeMode } from "@/lib/theme-mode-context";
 import { SplashTransition } from "@/components/splash-transition";
+import { OfflineBanner } from "@/components/offline-banner";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,6 +44,7 @@ function InnerLayout() {
         <Stack.Screen name="bookings/[id]" options={{ headerShown: false }} />
       </Stack>
       {signingOut && <SplashTransition />}
+      <OfflineBanner />
     </ThemeProvider>
   );
 }

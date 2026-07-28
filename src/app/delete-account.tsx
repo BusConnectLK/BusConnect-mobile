@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { deleteMyAccount, ApiError } from "@/lib/api";
+import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
 /**
@@ -129,7 +130,7 @@ export default function DeleteAccountScreen() {
                 />
               </>
             )}
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={confirmAndDelete}
               disabled={loading || (!phone && confirmText.trim().toUpperCase() !== "DELETE")}
@@ -155,7 +156,7 @@ export default function DeleteAccountScreen() {
               keyboardType="number-pad"
               style={[styles.input, { color: theme.text, borderColor: theme.border, letterSpacing: 6 }]}
             />
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={finishWithOtp}
               disabled={loading || !otp}
@@ -193,5 +194,4 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, padding: Spacing.three, fontSize: 16, marginBottom: Spacing.three },
   button: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  error: { color: "#dc2626", marginBottom: Spacing.three, fontSize: 13 },
 });

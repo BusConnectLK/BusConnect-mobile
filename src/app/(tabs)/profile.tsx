@@ -11,6 +11,7 @@ import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
 import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
+import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
 export default function ProfileScreen() {
@@ -53,7 +54,9 @@ export default function ProfileScreen() {
   if (loadError) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: "#dc2626" }}>{loadError}</Text>
+        <View style={{ width: "100%", paddingHorizontal: Spacing.four }}>
+          <Banner tone="error" message={loadError} />
+        </View>
       </View>
     );
   }
@@ -220,7 +223,11 @@ function ProfileForm({
             />
           )}
 
-          {error && <Text style={{ color: "#dc2626", marginTop: Spacing.two }}>{error}</Text>}
+          {error && (
+            <View style={{ marginTop: Spacing.two }}>
+              <Banner tone="error" message={error} />
+            </View>
+          )}
 
           <View style={styles.editActionsRow}>
             <Pressable

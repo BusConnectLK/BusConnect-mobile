@@ -23,14 +23,23 @@ async function request<T>(
 ): Promise<T> {
   const { accessToken, headers, ...rest } = init;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...headers,
+      },
+    });
+  } catch {
+    // fetch() itself throwing (not an HTTP error status) means the request
+    // never reached the server — no connection, DNS failure, etc. Status 0
+    // distinguishes this from a real server-returned error everywhere
+    // ApiError.status is checked.
+    throw new ApiError(0, "No internet connection. Check your network and try again.");
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

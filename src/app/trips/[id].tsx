@@ -30,6 +30,7 @@ import {
 } from "@/lib/api";
 import { layoutToGrid } from "@/lib/seat-layout";
 import { LiveMap } from "@/components/live-map";
+import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
 function formatTripTime(iso: string) {
@@ -64,7 +65,7 @@ export default function TripDetailScreen() {
         setTrip(t);
         setSeatmap(s);
       })
-      .catch(() => setError("Could not load this trip."));
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Could not load this trip."));
     getTripCrew(id)
       .then(setCrew)
       .catch(() => void 0);
@@ -213,7 +214,9 @@ export default function TripDetailScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+          <View style={{ width: "100%", paddingHorizontal: Spacing.four }}>
+            <Banner tone="error" message={error} />
+          </View>
         </View>
       </View>
     );
@@ -374,7 +377,11 @@ export default function TripDetailScreen() {
           ))}
         </View>
 
-        {error && <Text style={{ color: "#dc2626", marginTop: Spacing.three }}>{error}</Text>}
+        {error && (
+          <View style={{ marginTop: Spacing.three }}>
+            <Banner tone="error" message={error} />
+          </View>
+        )}
       </ScrollView>
 
       <View style={[styles.footer, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>

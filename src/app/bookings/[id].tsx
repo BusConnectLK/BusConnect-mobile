@@ -7,6 +7,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { getBooking, cancelBooking, ApiError, type Booking } from "@/lib/api";
+import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
 /** Mirrors BookingsService's refund tiers (web's cancel-button.tsx) — preview
@@ -71,7 +72,9 @@ export default function TicketScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+          <View style={{ width: "100%", paddingHorizontal: Spacing.four }}>
+            <Banner tone="error" message={error} />
+          </View>
         </View>
       </View>
     );

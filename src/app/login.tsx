@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { PhoneField } from "@/components/phone-field";
+import { Banner } from "@/components/banner";
 import { toE164 } from "@/lib/phone";
 import { Spacing } from "@/constants/theme";
 
@@ -60,7 +61,11 @@ export default function LoginScreen() {
           />
         </View>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && (
+          <View style={{ marginTop: Spacing.three }}>
+            <Banner tone="error" message={error} />
+          </View>
+        )}
 
         <Pressable onPress={() => router.push("/forgot-password")} style={{ marginTop: Spacing.two, alignSelf: "flex-end" }}>
           <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}>Forgot password?</Text>
@@ -112,5 +117,4 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
   button: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: Spacing.four },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  error: { color: "#dc2626", marginTop: Spacing.three, fontSize: 13 },
 });

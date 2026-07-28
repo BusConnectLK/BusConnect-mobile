@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/lib/supabase";
 import { PhoneField } from "@/components/phone-field";
+import { Banner } from "@/components/banner";
 import { toE164 } from "@/lib/phone";
 import { Spacing } from "@/constants/theme";
 
@@ -75,7 +76,7 @@ export default function ForgotPasswordScreen() {
           <>
             <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
             <PhoneField value={phone} onChangeText={setPhone} />
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={sendCode}
               disabled={loading || !phone}
@@ -97,7 +98,7 @@ export default function ForgotPasswordScreen() {
               keyboardType="number-pad"
               style={[styles.input, { color: theme.text, borderColor: theme.border, letterSpacing: 6 }]}
             />
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={verifyCode}
               disabled={loading || !otp}
@@ -120,7 +121,7 @@ export default function ForgotPasswordScreen() {
               autoComplete="new-password"
               style={[styles.input, { color: theme.text, borderColor: theme.border }]}
             />
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={setNewPassword}
               disabled={loading || !password}
@@ -149,5 +150,4 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, padding: Spacing.three, fontSize: 16 },
   button: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: Spacing.four },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  error: { color: "#dc2626", marginTop: Spacing.three, fontSize: 13 },
 });

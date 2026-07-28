@@ -4,7 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
-import { searchTrips, type TripSearchResult } from "@/lib/api";
+import { searchTrips, ApiError, type TripSearchResult } from "@/lib/api";
+import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
 function formatTime(iso: string) {
@@ -38,7 +39,7 @@ export default function SearchResultsScreen() {
     if (!from || !to || !date) return;
     searchTrips({ from, to, date })
       .then(setResults)
-      .catch(() => setError("Could not load trips. Pull down to try again."));
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Could not load trips. Pull down to try again."));
   }, [from, to, date]);
 
   const hero = (
@@ -56,7 +57,9 @@ export default function SearchResultsScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+          <View style={{ width: "100%" }}>
+            <Banner tone="error" message={error} />
+          </View>
         </View>
       </View>
     );

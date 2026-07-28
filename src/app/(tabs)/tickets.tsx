@@ -6,6 +6,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { listMyBookings, type MyBooking } from "@/lib/tickets";
+import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
 type Tab = "confirmed" | "pending" | "cancelled";
@@ -90,7 +91,9 @@ export default function TicketsScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <Text style={{ color: theme.textSecondary }}>{error}</Text>
+          <View style={{ width: "100%", paddingHorizontal: Spacing.four }}>
+            <Banner tone="error" message={error} />
+          </View>
         </View>
       </View>
     );
