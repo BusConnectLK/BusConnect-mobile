@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Switch, Te
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import type { Session } from "@supabase/supabase-js";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
 import { useAuth } from "@/lib/auth";
@@ -10,6 +11,7 @@ import { getMyProfile, updateMyProfile, ApiError, type MyProfile } from "@/lib/a
 import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
 import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
+import { registerForPushNotifications, unregisterCurrentPushToken } from "@/lib/push-notifications";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
 import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
@@ -82,7 +84,7 @@ export default function ProfileScreen() {
           theme={theme}
         />
 
-        <PreferencesSection theme={theme} />
+        <PreferencesSection theme={theme} session={session} />
         <SupportSection theme={theme} />
 
         <Pressable onPress={handleSignOut} style={styles.dangerButton}>
@@ -282,17 +284,32 @@ function ReadOnlyRow({
   );
 }
 
-function PreferencesSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
+function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTheme>; session: Session | null }) {
   const { mode, setMode } = useThemeMode();
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     void getPushNotificationsEnabled().then(setPushEnabled);
   }, []);
 
+  // Actually registers/unregisters this device's Expo push token with the
+  // backend (not just a local preference flag) — turning this off means
+  // pushes genuinely stop arriving, not just that the app stops asking.
   async function togglePush(next: boolean) {
+    if (!session) return;
     setPushEnabled(next);
-    await setPushNotificationsEnabled(next);
+    setPushBusy(true);
+    try {
+      if (next) {
+        await registerForPushNotifications(session.access_token);
+      } else {
+        await unregisterCurrentPushToken(session.access_token);
+      }
+      await setPushNotificationsEnabled(next);
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   const modes: { key: "light" | "dark" | "system"; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -333,7 +350,12 @@ function PreferencesSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
             <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}>Push notifications</Text>
             <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>Trip updates and alerts</Text>
           </View>
-          <Switch value={pushEnabled} onValueChange={togglePush} trackColor={{ true: theme.brand }} />
+          <Switch
+            value={pushEnabled}
+            onValueChange={togglePush}
+            disabled={pushBusy || !session}
+            trackColor={{ true: theme.brand }}
+          />
         </View>
       </View>
     </View>
