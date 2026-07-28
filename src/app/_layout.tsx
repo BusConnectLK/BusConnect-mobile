@@ -40,6 +40,7 @@ function InnerLayout() {
         <Stack.Screen name="delete-account" options={{ headerShown: false }} />
         <Stack.Screen name="search-results" options={{ headerShown: false }} />
         <Stack.Screen name="trips/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="track/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="checkout/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="bookings/[id]" options={{ headerShown: false }} />
       </Stack>

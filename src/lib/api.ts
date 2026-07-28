@@ -196,10 +196,14 @@ export interface WebXPayCheckout {
 }
 
 /** Live GPS position from the conductor's device, if it's pushing one yet. */
+export type TripStatus = "scheduled" | "boarding" | "departed" | "arrived" | "cancelled";
+
 export type TripLive =
-  | { ok: true; tracking: false }
+  | { ok: true; status: TripStatus; sharing: boolean; tracking: false }
   | {
       ok: true;
+      status: TripStatus;
+      sharing: boolean;
       tracking: true;
       lat: number;
       lng: number;
@@ -208,6 +212,25 @@ export type TripLive =
       distance_m: number | null;
       eta_minutes: number | null;
     };
+
+/** One stop along the route, with coordinates, for drawing the tracking map. */
+export interface TripRouteStop {
+  route_stop_id: string;
+  location_id: string;
+  name: string;
+  seq: number;
+  lat: number;
+  lng: number;
+  is_origin: boolean;
+  is_dest: boolean;
+}
+
+/** The static map layer: the route line (GeoJSON, [lng,lat] pairs) + stops. */
+export interface TripRoute {
+  ok: boolean;
+  path: { type: "LineString"; coordinates: [number, number][] } | null;
+  stops: TripRouteStop[];
+}
 
 // ── Public (no token) ────────────────────────────────────────────────────────
 
@@ -227,6 +250,10 @@ export function getSeatmap(id: string) {
 export function getTripLive(id: string, stopId?: string) {
   const qs = stopId ? `?stopId=${encodeURIComponent(stopId)}` : "";
   return request<TripLive>(`/trips/${id}/live${qs}`);
+}
+
+export function getTripRoute(id: string) {
+  return request<TripRoute>(`/trips/${id}/route`);
 }
 
 // ── Authenticated (token required) ──────────────────────────────────────────

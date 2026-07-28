@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -195,12 +196,33 @@ function TicketCard({ b, theme }: { b: MyBooking; theme: ReturnType<typeof useTh
 
       <View style={{ marginTop: Spacing.three }}>
         {t === "confirmed" && b.qrSignature ? (
-          <Pressable
-            onPress={() => setOpen((v) => !v)}
-            style={[styles.primaryButton, { backgroundColor: theme.brand, alignSelf: "flex-start" }]}
-          >
-            <Text style={styles.primaryButtonText}>{open ? "Hide QR" : "Show QR ticket"}</Text>
-          </Pressable>
+          <View style={styles.actionRow}>
+            <Pressable
+              onPress={() => setOpen((v) => !v)}
+              style={[styles.primaryButton, { backgroundColor: theme.brand }]}
+            >
+              <Text style={styles.primaryButtonText}>{open ? "Hide QR" : "Show QR ticket"}</Text>
+            </Pressable>
+            {b.tripStatus !== "arrived" && b.tripStatus !== "cancelled" && (
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/track/[id]",
+                    params: {
+                      id: b.tripId,
+                      stopId: b.fromStopId,
+                      routeName: b.routeName ?? "",
+                      operatorName: b.operatorName,
+                    },
+                  })
+                }
+                style={[styles.secondaryButton, { borderColor: theme.brand }]}
+              >
+                <Ionicons name="navigate-outline" size={15} color={theme.brand} />
+                <Text style={{ color: theme.brand, fontWeight: "700" }}>Track bus</Text>
+              </Pressable>
+            )}
+          </View>
         ) : t === "pending" ? (
           <Pressable
             onPress={() => router.push(`/checkout/${b.id}`)}
@@ -288,9 +310,18 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   stat: { minWidth: "42%" },
+  actionRow: { flexDirection: "row", gap: Spacing.two, flexWrap: "wrap" },
   primaryButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  secondaryButton: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  secondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   qrWrap: {
     alignItems: "center",
     marginTop: Spacing.four,
