@@ -1,0 +1,149 @@
+import { useCallback, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect, type Href } from "expo-router";
+import { useTheme } from "@/hooks/use-theme";
+import { useAuth } from "@/lib/auth";
+import {
+  listNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  ApiError,
+  type NotificationItem,
+} from "@/lib/api";
+import { Banner } from "@/components/banner";
+import { Spacing } from "@/constants/theme";
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-LK", { day: "numeric", month: "short" });
+}
+
+export default function NotificationsScreen() {
+  const theme = useTheme();
+  const { session } = useAuth();
+  const [items, setItems] = useState<NotificationItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    if (!session) return;
+    listNotifications(session.access_token)
+      .then(setItems)
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Could not load notifications."));
+  }, [session]);
+
+  useFocusEffect(load);
+
+  async function onTap(item: NotificationItem) {
+    if (!session) return;
+    if (!item.readAt) {
+      setItems((prev) => prev?.map((i) => (i.id === item.id ? { ...i, readAt: new Date().toISOString() } : i)) ?? null);
+      void markNotificationRead(session.access_token, item.id);
+    }
+    const route = item.data.route as string | undefined;
+    if (route) router.push(route as Href);
+  }
+
+  async function onMarkAllRead() {
+    if (!session) return;
+    setItems((prev) => prev?.map((i) => ({ ...i, readAt: i.readAt ?? new Date().toISOString() })) ?? null);
+    await markAllNotificationsRead(session.access_token);
+  }
+
+  const hasUnread = items?.some((i) => !i.readAt) ?? false;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+        <View style={styles.heroTopRow}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </Pressable>
+          <Text style={styles.heroTitle}>Notifications</Text>
+          <Pressable onPress={onMarkAllRead} hitSlop={8} disabled={!hasUnread} style={styles.markAllButton}>
+            <Text style={[styles.markAllText, { opacity: hasUnread ? 1 : 0 }]}>Mark all read</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      {error && (
+        <View style={{ padding: Spacing.four }}>
+          <Banner tone="error" message={error} />
+        </View>
+      )}
+
+      {!items && !error ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+        </View>
+      ) : items?.length === 0 ? (
+        <View style={styles.center}>
+          <Ionicons name="notifications-outline" size={40} color={theme.textSecondary} />
+          <Text style={{ color: theme.textSecondary, marginTop: Spacing.three }}>Nothing yet — you&apos;re all caught up.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={items ?? []}
+          keyExtractor={(i) => i.id}
+          contentContainerStyle={{ padding: Spacing.four, gap: Spacing.two }}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => onTap(item)}
+              style={[
+                styles.row,
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+              ]}
+            >
+              {!item.readAt && <View style={[styles.unreadDot, { backgroundColor: theme.brand }]} />}
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={[styles.body, { color: theme.textSecondary }]} numberOfLines={2}>
+                  {item.body}
+                </Text>
+                <Text style={[styles.time, { color: theme.textSecondary }]}>{timeAgo(item.createdAt)}</Text>
+              </View>
+            </Pressable>
+          )}
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  backButton: { width: 32 },
+  heroTitle: { fontSize: 18, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  markAllButton: { minWidth: 32 },
+  markAllText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.six },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: Spacing.three,
+  },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
+  title: { fontSize: 14, fontWeight: "700" },
+  body: { fontSize: 13, marginTop: 2, lineHeight: 18 },
+  time: { fontSize: 11, marginTop: 6 },
+});

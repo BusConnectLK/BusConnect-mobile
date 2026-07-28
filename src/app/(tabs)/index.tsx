@@ -19,6 +19,7 @@ import { useThemeMode } from "@/lib/theme-mode-context";
 import { useAuth } from "@/lib/auth";
 import { listLocations, type Location } from "@/lib/locations";
 import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popular-routes";
+import { NotificationBell } from "@/components/notification-bell";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
 // Date-only string in the device's local calendar day — NOT toISOString(),
@@ -89,8 +90,11 @@ export default function SearchScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
           <View style={styles.heroTopRow}>
-            <Text style={styles.greeting}>{firstName ? `Hello, ${firstName}` : "Every Journey, Connected."}</Text>
-            <Text style={styles.tagline}>Search live seats, book securely, board with a QR ticket.</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greeting}>{firstName ? `Hello, ${firstName}` : "Every Journey, Connected."}</Text>
+              <Text style={styles.tagline}>Search live seats, book securely, board with a QR ticket.</Text>
+            </View>
+            <NotificationBell />
           </View>
         </SafeAreaView>
 
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  heroTopRow: { flexDirection: "column" },
+  heroTopRow: { flexDirection: "row", alignItems: "flex-start" },
   greeting: { fontSize: 24, fontWeight: "800", color: "#fff", letterSpacing: -0.3, maxWidth: 240 },
   tagline: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one, maxWidth: 260, lineHeight: 18 },
   card: {

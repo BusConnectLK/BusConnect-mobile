@@ -55,6 +55,7 @@ function InnerLayout() {
         <Stack.Screen name="track/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="checkout/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="bookings/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false }} />
       </Stack>
       {signingOut && <SplashTransition />}
       <OfflineBanner />

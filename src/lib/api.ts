@@ -351,6 +351,32 @@ export function registerPushToken(
   });
 }
 
+export interface NotificationItem {
+  id: string;
+  template: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export function listNotifications(accessToken: string) {
+  return request<NotificationItem[]>("/notifications", { accessToken });
+}
+
+export function getUnreadNotificationCount(accessToken: string) {
+  return request<{ count: number }>("/notifications/unread-count", { accessToken });
+}
+
+export function markNotificationRead(accessToken: string, id: string) {
+  return request<{ ok: true }>(`/notifications/${id}/read`, { method: "PATCH", accessToken });
+}
+
+export function markAllNotificationsRead(accessToken: string) {
+  return request<{ ok: true }>("/notifications/read-all", { method: "POST", accessToken });
+}
+
 export function unregisterPushToken(accessToken: string, token: string) {
   return request<{ ok: true }>("/notifications/push-token", {
     method: "DELETE",
