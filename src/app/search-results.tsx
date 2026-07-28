@@ -1,12 +1,28 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActivityIndicator, FlatList, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
+import { useThemeMode } from "@/lib/theme-mode-context";
 import { searchTrips, ApiError, type TripSearchResult } from "@/lib/api";
 import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
+
+// Date-only string in the device's local calendar day — NOT toISOString(),
+// which converts to UTC first and lands on the wrong day for anyone east of
+// UTC (e.g. Sri Lanka, UTC+5:30) between local midnight and the UTC rollover.
+function localDateIso(d: Date) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function todayIso() {
+  return localDateIso(new Date());
+}
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-LK", { hour: "2-digit", minute: "2-digit" });
@@ -31,65 +47,123 @@ function routeEndpoints(routeName: string): [string, string] {
 
 export default function SearchResultsScreen() {
   const theme = useTheme();
+  const { resolvedScheme } = useThemeMode();
   const { from, to, date } = useLocalSearchParams<{ from: string; to: string; date: string }>();
-  const [results, setResults] = useState<TripSearchResult[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const requestKey = `${from}-${to}-${date}`;
+  // Keyed by the request that produced it — lets "loading" fall naturally
+  // out of a key mismatch instead of an imperative reset in the effect body
+  // (a synchronous setState there would double-render on every param change).
+  const [resultsState, setResultsState] = useState<{ key: string; data: TripSearchResult[] } | null>(null);
+  const [errorState, setErrorState] = useState<{ key: string; message: string } | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     if (!from || !to || !date) return;
     searchTrips({ from, to, date })
-      .then(setResults)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Could not load trips. Pull down to try again."));
+      .then((data) => setResultsState({ key: requestKey, data }))
+      .catch((e) =>
+        setErrorState({
+          key: requestKey,
+          message: e instanceof ApiError ? e.message : "Could not load trips. Pull down to try again.",
+        }),
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- requestKey is derived from from/to/date
   }, [from, to, date]);
+
+  const results = resultsState?.key === requestKey ? resultsState.data : null;
+  const error = errorState?.key === requestKey ? errorState.message : null;
+
+  const pickerValue = useMemo(() => (date ? new Date(`${date}T00:00:00`) : new Date()), [date]);
+
+  function onDateChange(next: Date) {
+    router.setParams({ date: localDateIso(next) });
+  }
 
   const hero = (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-        <Ionicons name="chevron-back" size={22} color="#fff" />
-      </Pressable>
-      <Text style={styles.heroTitle}>Search results</Text>
-      {date && <Text style={styles.heroSubtitle}>{formatDate(date)}</Text>}
+      <View style={styles.heroTopRow}>
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
+        </Pressable>
+        <Text style={styles.heroTitle}>Search results</Text>
+        <View style={{ width: 22 }} />
+      </View>
+      {date && (
+        <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateChip} hitSlop={8}>
+          <Ionicons name="calendar-outline" size={14} color="#fff" />
+          <Text style={styles.heroSubtitle}>{formatDate(date)}</Text>
+          <Ionicons name="chevron-down" size={14} color="rgba(255,255,255,0.85)" />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 
-  if (error) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
-        {hero}
-        <View style={styles.center}>
-          <View style={{ width: "100%" }}>
-            <Banner tone="error" message={error} />
+  const datePickerOverlay = (
+    <>
+      {showDatePicker && Platform.OS === "android" && (
+        <DateTimePicker
+          value={pickerValue}
+          mode="date"
+          minimumDate={new Date(todayIso())}
+          onChange={(_event, selected) => {
+            setShowDatePicker(false);
+            if (selected) onDateChange(selected);
+          }}
+        />
+      )}
+
+      {showDatePicker && Platform.OS === "ios" && (
+        <View style={StyleSheet.absoluteFill}>
+          <Pressable style={[StyleSheet.absoluteFill, styles.overlay]} onPress={() => setShowDatePicker(false)} />
+          <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
+            <View style={styles.datePickerHeader}>
+              <Pressable onPress={() => setShowDatePicker(false)} hitSlop={8}>
+                <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={pickerValue}
+              mode="date"
+              display="inline"
+              themeVariant={resolvedScheme}
+              accentColor={theme.brand}
+              minimumDate={new Date(todayIso())}
+              style={styles.datePickerNative}
+              onChange={(_event, selected) => {
+                if (selected) onDateChange(selected);
+              }}
+            />
           </View>
         </View>
-      </View>
-    );
-  }
+      )}
+    </>
+  );
 
-  if (!results) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
-        {hero}
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.brand} />
+  let content: ReactNode;
+  if (error) {
+    content = (
+      <View style={styles.center}>
+        <View style={{ width: "100%" }}>
+          <Banner tone="error" message={error} />
         </View>
       </View>
     );
-  }
-
-  if (results.length === 0) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
-        {hero}
-        <View style={styles.center}>
-          <Text style={{ color: theme.textSecondary }}>No buses found for this route and date.</Text>
-        </View>
+  } else if (!results) {
+    content = (
+      <View style={styles.center}>
+        <ActivityIndicator color={theme.brand} />
       </View>
     );
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-      {hero}
+  } else if (results.length === 0) {
+    content = (
+      <View style={styles.center}>
+        <Text style={{ color: theme.textSecondary, textAlign: "center" }}>
+          No buses found for this route and date.{"\n"}Try another date above.
+        </Text>
+      </View>
+    );
+  } else {
+    content = (
       <FlatList
         style={{ backgroundColor: theme.background }}
         contentContainerStyle={{ padding: Spacing.three, gap: Spacing.three }}
@@ -97,6 +171,14 @@ export default function SearchResultsScreen() {
         keyExtractor={(item) => `${item.trip_id}-${item.from_stop_id}-${item.to_stop_id}`}
         renderItem={({ item }) => <TripCard trip={item} theme={theme} />}
       />
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {hero}
+      {content}
+      {datePickerOverlay}
     </View>
   );
 }
@@ -213,9 +295,38 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  backButton: { alignSelf: "flex-start", marginBottom: Spacing.two },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
-  heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one },
+  heroTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  backButton: { width: 22 },
+  heroTitle: { fontSize: 18, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
+  dateChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    marginTop: Spacing.two,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  heroSubtitle: { fontSize: 13, color: "#fff", fontWeight: "600" },
+  overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
+  datePickerSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Spacing.six,
+  },
+  datePickerHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  datePickerNative: { alignSelf: "center", width: 300, height: 300 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.four },
   card: { borderWidth: 1, borderRadius: 16, overflow: "hidden" },
   thumbWrap: { width: "100%", height: 120 },

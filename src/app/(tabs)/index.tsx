@@ -366,10 +366,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: Spacing.six,
+    // The tab bar floats over the content (position: "absolute" in the tabs
+    // layout, with elevation above everything else), so a sheet anchored to
+    // the true screen bottom renders underneath it. Anchoring above the tab
+    // bar's reserved space instead keeps the whole sheet visible.
+    bottom: BottomTabInset,
+    borderRadius: 20,
+    paddingBottom: Spacing.three,
   },
   datePickerHeader: {
     flexDirection: "row",
@@ -377,7 +380,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
-  datePickerNative: { alignSelf: "center", width: 340, height: 360 },
+  datePickerNative: { alignSelf: "center", width: 300, height: 300 },
   sheet: {
     position: "absolute",
     left: 0,
