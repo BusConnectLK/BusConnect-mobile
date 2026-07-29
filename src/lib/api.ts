@@ -362,11 +362,11 @@ export interface NotificationItem {
 }
 
 export function listNotifications(accessToken: string) {
-  return request<NotificationItem[]>("/notifications", { accessToken });
+  return request<NotificationItem[]>("/notifications?app=passenger", { accessToken });
 }
 
 export function getUnreadNotificationCount(accessToken: string) {
-  return request<{ count: number }>("/notifications/unread-count", { accessToken });
+  return request<{ count: number }>("/notifications/unread-count?app=passenger", { accessToken });
 }
 
 export function markNotificationRead(accessToken: string, id: string) {
@@ -374,7 +374,7 @@ export function markNotificationRead(accessToken: string, id: string) {
 }
 
 export function markAllNotificationsRead(accessToken: string) {
-  return request<{ ok: true }>("/notifications/read-all", { method: "POST", accessToken });
+  return request<{ ok: true }>("/notifications/read-all?app=passenger", { method: "POST", accessToken });
 }
 
 export function unregisterPushToken(accessToken: string, token: string) {
