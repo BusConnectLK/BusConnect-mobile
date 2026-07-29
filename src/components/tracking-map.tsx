@@ -230,7 +230,7 @@ export function TrackingMap({
           <Marker.Animated coordinate={busCoord as unknown as LatLng} anchor={{ x: 0.5, y: 0.5 }}>
             <View style={styles.busPuckRing}>
               <Animated.View style={[styles.busPuck, { transform: [{ rotate: headingRotate }] }]}>
-                <Ionicons name="navigate" size={16} color="#fff" style={styles.busPuckIcon} />
+                <Ionicons name="bus" size={16} color="#fff" style={styles.busPuckIcon} />
               </Animated.View>
             </View>
           </Marker.Animated>

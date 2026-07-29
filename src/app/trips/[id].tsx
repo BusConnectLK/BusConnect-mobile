@@ -29,7 +29,6 @@ import {
   type CrewMember,
 } from "@/lib/api";
 import { layoutToGrid } from "@/lib/seat-layout";
-import { LiveMap } from "@/components/live-map";
 import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
@@ -38,6 +37,7 @@ function formatTripTime(iso: string) {
 }
 
 const SEAT_COLOR = {
+  selected: "#059669",
   male: "#2563eb",
   female: "#ec4899",
   pending: "#eab308",
@@ -237,14 +237,6 @@ export default function TripDetailScreen() {
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {hero}
       <ScrollView contentContainerStyle={{ padding: Spacing.three, paddingBottom: 140 }}>
-        <View style={{ marginTop: Spacing.three }}>
-          <LiveMap
-            tripId={trip.id}
-            stopId={from ?? ""}
-            active={trip.status === "boarding" || trip.status === "departed"}
-          />
-        </View>
-
         <View
           style={[styles.journeyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
         >
@@ -332,7 +324,7 @@ export default function TripDetailScreen() {
 
         <View style={styles.legend}>
           <LegendItem color="transparent" border={theme.border} label="Available" />
-          <LegendItem color={theme.brand} label="Selected" />
+          <LegendItem color={SEAT_COLOR.selected} label="Selected" />
           <LegendItem color={SEAT_COLOR.male} label="Male" />
           <LegendItem color={SEAT_COLOR.female} label="Female" />
           <LegendItem color={SEAT_COLOR.pending} label="Pending" />
@@ -354,7 +346,7 @@ export default function TripDetailScreen() {
                     style={[
                       styles.seat,
                       { borderColor: theme.border },
-                      kind === "selected" && { backgroundColor: theme.brand, borderColor: theme.brand },
+                      kind === "selected" && { backgroundColor: SEAT_COLOR.selected, borderColor: SEAT_COLOR.selected },
                       kind === "male" && { backgroundColor: SEAT_COLOR.male, borderColor: SEAT_COLOR.male },
                       kind === "female" && { backgroundColor: SEAT_COLOR.female, borderColor: SEAT_COLOR.female },
                       kind === "pending" && { backgroundColor: SEAT_COLOR.pending, borderColor: SEAT_COLOR.pending },

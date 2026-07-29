@@ -46,6 +46,7 @@ export default function TrackScreen() {
   const [tripDetail, setTripDetail] = useState<TripDetail | null>(null);
   const [crew, setCrew] = useState<TripCrew | null>(null);
   const [notifyNear, setNotifyNear] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const notifiedRef = useRef(false);
 
   // Route line + stops — fetched once, static.
@@ -223,76 +224,80 @@ export default function TrackScreen() {
       {/* Bottom sheet */}
       <SafeAreaView edges={["bottom"]} style={styles.sheetWrap} pointerEvents="box-none">
         <View style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}>
-          <View style={[styles.grabber, { backgroundColor: theme.border }]} />
+          <Pressable onPress={() => setCollapsed((v) => !v)} hitSlop={8}>
+            <View style={[styles.grabber, { backgroundColor: theme.border }]} />
+          </Pressable>
 
           <View style={styles.statusRow}>
             <View style={styles.statusRowLeft}>
               <StatusDot tone={sheet.tone} />
               <Text style={[styles.statusLabel, { color: toneColor(sheet.tone) }]}>{sheet.label}</Text>
             </View>
-            <Pressable
-              onPress={toggleNotify}
-              hitSlop={8}
-              style={[
-                styles.notifyBtn,
-                { borderColor: notifyNear ? theme.brand : theme.border },
-                notifyNear && { backgroundColor: theme.brandSoft },
-              ]}
-            >
-              <Ionicons
-                name={notifyNear ? "notifications" : "notifications-outline"}
-                size={13}
-                color={notifyNear ? theme.brand : theme.textSecondary}
-              />
-              <Text style={[styles.notifyBtnText, { color: notifyNear ? theme.brand : theme.textSecondary }]}>
-                {notifyNear ? "Notifying" : "Notify me"}
-              </Text>
-            </Pressable>
-          </View>
-
-          {sheet.etaMinutes != null ? (
-            <View style={styles.heroRow}>
-              <Text style={[styles.etaBig, { color: theme.text }]}>{sheet.etaMinutes}</Text>
-              <Text style={[styles.etaUnit, { color: theme.text }]}> min</Text>
-              {boardingName ? (
-                <Text style={[styles.etaTo, { color: theme.textSecondary }]}>  to {boardingName}</Text>
-              ) : null}
+            <View style={styles.statusRowLeft}>
+              <Pressable
+                onPress={toggleNotify}
+                hitSlop={8}
+                style={[
+                  styles.notifyBtn,
+                  { borderColor: notifyNear ? theme.brand : theme.border },
+                  notifyNear && { backgroundColor: theme.brandSoft },
+                ]}
+              >
+                <Ionicons
+                  name={notifyNear ? "notifications" : "notifications-outline"}
+                  size={13}
+                  color={notifyNear ? theme.brand : theme.textSecondary}
+                />
+                <Text style={[styles.notifyBtnText, { color: notifyNear ? theme.brand : theme.textSecondary }]}>
+                  {notifyNear ? "Notifying" : "Notify me"}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => setCollapsed((v) => !v)} hitSlop={8}>
+                <Ionicons
+                  name={collapsed ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
             </View>
-          ) : (
-            <Text style={[styles.heroTitle, { color: theme.text }]}>{sheet.title}</Text>
-          )}
-
-          {sheet.sub ? <Text style={[styles.sub, { color: theme.textSecondary }]}>{sheet.sub}</Text> : null}
-
-          <View style={[styles.metaRow, { borderTopColor: theme.border }]}>
-            <Ionicons name="bus-outline" size={15} color={theme.textSecondary} />
-            <Text style={{ color: theme.textSecondary, fontSize: 13, flex: 1 }} numberOfLines={1}>
-              {operatorName ?? "Your bus"}
-              {tripDetail ? ` · ${tripDetail.bus.reg_no}` : ""}
-            </Text>
-            {sheet.speedKmh != null ? (
-              <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{sheet.speedKmh} km/h</Text>
-            ) : null}
           </View>
 
-          {(crew?.driver || crew?.conductor || tripDetail?.bus.amenities.length) && (
-            <View style={styles.infoCard}>
+          {!collapsed && (
+            <>
+              {sheet.etaMinutes != null ? (
+                <View style={styles.heroRow}>
+                  <Text style={[styles.etaBig, { color: theme.text }]}>{sheet.etaMinutes}</Text>
+                  <Text style={[styles.etaUnit, { color: theme.text }]}> min</Text>
+                  {boardingName ? (
+                    <Text style={[styles.etaTo, { color: theme.textSecondary }]}>  to {boardingName}</Text>
+                  ) : null}
+                </View>
+              ) : (
+                <Text style={[styles.heroTitle, { color: theme.text }]}>{sheet.title}</Text>
+              )}
+
+              {sheet.sub ? <Text style={[styles.sub, { color: theme.textSecondary }]}>{sheet.sub}</Text> : null}
+
+              <View style={[styles.metaRow, { borderTopColor: theme.border }]}>
+                <Ionicons name="bus-outline" size={15} color={theme.textSecondary} />
+                <Text style={{ color: theme.textSecondary, fontSize: 13, flex: 1 }} numberOfLines={1}>
+                  {operatorName ?? "Your bus"}
+                  {tripDetail ? ` · ${tripDetail.bus.reg_no}` : ""}
+                </Text>
+                {sheet.speedKmh != null ? (
+                  <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{sheet.speedKmh} km/h</Text>
+                ) : null}
+              </View>
+
               {(crew?.driver || crew?.conductor) && (
-                <View style={styles.crewRow}>
-                  {crew?.driver && <CrewChip label="Driver" member={crew.driver} theme={theme} />}
-                  {crew?.conductor && <CrewChip label="Conductor" member={crew.conductor} theme={theme} />}
+                <View style={styles.infoCard}>
+                  <View style={styles.crewRow}>
+                    {crew?.driver && <CrewChip label="Driver" member={crew.driver} theme={theme} />}
+                    {crew?.conductor && <CrewChip label="Conductor" member={crew.conductor} theme={theme} />}
+                  </View>
                 </View>
               )}
-              {tripDetail?.bus.amenities.length ? (
-                <View style={styles.chipsRow}>
-                  {tripDetail.bus.amenities.slice(0, 5).map((a) => (
-                    <View key={a} style={[styles.chip, { backgroundColor: theme.brandSoft }]}>
-                      <Text style={[styles.chipText, { color: theme.brand }]}>{a}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </View>
+            </>
           )}
         </View>
       </SafeAreaView>
@@ -486,7 +491,4 @@ const styles = StyleSheet.create({
   crewAvatarPlaceholder: { alignItems: "center", justifyContent: "center" },
   crewLabel: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
   crewName: { fontSize: 13, fontWeight: "600" },
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
-  chipText: { fontSize: 11, fontWeight: "700", textTransform: "capitalize" },
 });
