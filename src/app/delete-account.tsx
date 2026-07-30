@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -103,7 +114,8 @@ export default function DeleteAccountScreen() {
         <Text style={styles.heroTitle}>Delete account</Text>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={[styles.badge, { backgroundColor: "#fee2e2" }]}>
         <Ionicons name="trash-outline" size={26} color="#dc2626" />
       </View>
@@ -172,6 +184,7 @@ export default function DeleteAccountScreen() {
         </Pressable>
       </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
