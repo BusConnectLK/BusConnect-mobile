@@ -142,7 +142,7 @@ function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType
         </View>
       )}
       <Text style={styles.heroName}>{profile.name || "Add your name"}</Text>
-      <Text style={styles.heroSubtitle}>{profile.email || formatPhoneDisplay(profile.phone)}</Text>
+      <Text style={styles.heroSubtitle}>{formatPhoneDisplay(profile.phone)}</Text>
     </SafeAreaView>
   );
 }
@@ -280,9 +280,7 @@ function ProfileForm({
       ) : (
         <View style={{ marginTop: Spacing.two }}>
           <ReadOnlyRow label="Full name" value={profile.name} theme={theme} />
-          {!phoneLocked && (
-            <ReadOnlyRow label="Phone number" value={formatPhoneDisplay(profile.phone)} theme={theme} />
-          )}
+          <ReadOnlyRow label="Phone number" value={formatPhoneDisplay(profile.phone)} theme={theme} />
           <ReadOnlyRow label="NIC" value={profile.nic} theme={theme} />
           {!emailLocked && <ReadOnlyRow label="Email address" value={profile.email} theme={theme} last />}
           {saved && <Text style={{ color: "#059669", marginTop: Spacing.two }}>Saved.</Text>}

@@ -48,7 +48,7 @@ export default function NotificationsScreen() {
       setItems((prev) => prev?.map((i) => (i.id === item.id ? { ...i, readAt: new Date().toISOString() } : i)) ?? null);
       void markNotificationRead(session.access_token, item.id);
     }
-    const route = item.data.route as string | undefined;
+    const route = item.data?.route as string | undefined;
     if (route) router.push(route as Href);
   }
 
