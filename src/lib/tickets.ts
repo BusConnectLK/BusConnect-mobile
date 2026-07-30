@@ -64,6 +64,7 @@ export async function listMyBookings(): Promise<MyBooking[]> {
        tickets ( qr_signature, status )`,
     )
     .in("status", ["confirmed", "cancelled", "refunded"])
+    .eq("hidden_by_passenger", false)
     .order("created_at", { ascending: false });
 
   if (error) throw error;

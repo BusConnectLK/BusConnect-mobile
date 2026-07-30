@@ -295,6 +295,14 @@ export function cancelBooking(accessToken: string, id: string) {
   });
 }
 
+/** Removes a cancelled/refunded booking from the passenger's own ticket list — the record itself is kept. */
+export function hideBooking(accessToken: string, id: string) {
+  return request<{ ok: true }>(`/bookings/${id}/hide`, {
+    method: "POST",
+    accessToken,
+  });
+}
+
 export function checkoutBooking(accessToken: string, bookingId: string) {
   return request<WebXPayCheckout>(`/bookings/${bookingId}/pay`, {
     method: "POST",

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -7,6 +7,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
 import { listMyBookings, type MyBooking } from "@/lib/tickets";
+import { hideBooking, ApiError } from "@/lib/api";
 import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
@@ -163,16 +164,57 @@ export default function TicketsScreen() {
             <Text style={{ color: theme.textSecondary }}>No {TAB_LABEL[tab].toLowerCase()} bookings.</Text>
           </View>
         ) : (
-          shown.map((b) => <TicketCard key={b.id} b={b} t={tab} theme={theme} />)
+          shown.map((b) => (
+            <TicketCard
+              key={b.id}
+              b={b}
+              t={tab}
+              theme={theme}
+              accessToken={session.access_token}
+              onDeleted={() => setBookings((prev) => prev?.filter((x) => x.id !== b.id) ?? null)}
+            />
+          ))
         )}
       </ScrollView>
     </View>
   );
 }
 
-function TicketCard({ b, t, theme }: { b: MyBooking; t: Tab; theme: ReturnType<typeof useTheme> }) {
+function TicketCard({
+  b,
+  t,
+  theme,
+  accessToken,
+  onDeleted,
+}: {
+  b: MyBooking;
+  t: Tab;
+  theme: ReturnType<typeof useTheme>;
+  accessToken: string;
+  onDeleted: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const boarded = b.ticketStatus === "used";
+
+  function confirmDelete() {
+    Alert.alert("Remove this ticket?", "This only removes it from your list — it won't affect any refund already in progress.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setDeleting(true);
+          hideBooking(accessToken, b.id)
+            .then(onDeleted)
+            .catch((e) => {
+              setDeleting(false);
+              Alert.alert("Could not remove this ticket", e instanceof ApiError ? e.message : "Please try again.");
+            });
+        },
+      },
+    ]);
+  }
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -225,12 +267,26 @@ function TicketCard({ b, t, theme }: { b: MyBooking; t: Tab; theme: ReturnType<t
             )}
           </View>
         ) : (
-          <Pressable
-            onPress={() => router.push(`/bookings/${b.id}`)}
-            style={[styles.secondaryButton, { borderColor: theme.border, alignSelf: "flex-start" }]}
-          >
-            <Text style={{ color: theme.text, fontWeight: "600" }}>View booking</Text>
-          </Pressable>
+          <View style={styles.actionRow}>
+            <Pressable
+              onPress={() => router.push(`/bookings/${b.id}`)}
+              style={[styles.secondaryButton, { borderColor: theme.border, alignSelf: "flex-start" }]}
+            >
+              <Text style={{ color: theme.text, fontWeight: "600" }}>View booking</Text>
+            </Pressable>
+            <Pressable
+              onPress={confirmDelete}
+              disabled={deleting}
+              hitSlop={8}
+              style={[styles.deleteButton, { borderColor: theme.border, opacity: deleting ? 0.5 : 1 }]}
+            >
+              {deleting ? (
+                <ActivityIndicator color="#dc2626" size="small" />
+              ) : (
+                <Ionicons name="trash-outline" size={18} color="#dc2626" />
+              )}
+            </Pressable>
+          </View>
         )}
       </View>
 
@@ -314,6 +370,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  deleteButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: 12,
   },
   qrWrap: {
     alignItems: "center",

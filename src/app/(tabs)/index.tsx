@@ -475,7 +475,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
+    // Same reasoning as datePickerSheet — keep the sheet clear of the
+    // floating tab bar instead of anchoring flush to the screen bottom.
+    bottom: BottomTabInset,
     top: "20%",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

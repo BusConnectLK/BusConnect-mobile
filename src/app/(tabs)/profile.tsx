@@ -121,10 +121,21 @@ export default function ProfileScreen() {
 }
 
 function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType<typeof useTheme> }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  if (profile.avatar_url !== failedUrl && imageFailed) setImageFailed(false);
+
   return (
     <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
-      {profile.avatar_url ? (
-        <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+      {profile.avatar_url && !imageFailed ? (
+        <Image
+          source={{ uri: profile.avatar_url }}
+          style={styles.avatar}
+          onError={() => {
+            setFailedUrl(profile.avatar_url);
+            setImageFailed(true);
+          }}
+        />
       ) : (
         <View style={[styles.avatar, styles.avatarFallback]}>
           <Ionicons name="person" size={40} color="rgba(255,255,255,0.85)" />
@@ -203,7 +214,7 @@ function ProfileForm({
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View style={[styles.card, styles.firstCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.cardTitleRow}>
         <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
         {!isEditing && (
@@ -446,11 +457,14 @@ const styles = StyleSheet.create({
   heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
   card: {
     marginHorizontal: Spacing.four,
-    marginTop: -Spacing.four,
     borderWidth: 1,
     borderRadius: 20,
     padding: Spacing.four,
   },
+  // Only the first card (Personal information) needs to ride up into the
+  // curved hero header — the others sit under their own section label, and
+  // inheriting this negative margin would pull the card up over that label.
+  firstCard: { marginTop: -Spacing.four },
   cardTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   cardTitle: { fontSize: 15, fontWeight: "700" },
   editLink: { flexDirection: "row", alignItems: "center", gap: 4 },
