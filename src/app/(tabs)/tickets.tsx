@@ -225,7 +225,7 @@ function TicketCard({
       </View>
 
       <Text style={[styles.routeName, { color: theme.text }]}>{b.routeName ?? b.operatorName}</Text>
-      <Text style={{ color: theme.textSecondary, marginTop: 4 }}>
+      <Text style={[styles.routeMeta, { color: theme.textSecondary }]} numberOfLines={2}>
         {dateTime(b.departAt)} · {b.operatorName}
         {b.regNo ? ` · ${b.regNo}` : ""}
       </Text>
@@ -262,7 +262,7 @@ function TicketCard({
                 style={[styles.secondaryButton, { borderColor: theme.brand }]}
               >
                 <Ionicons name="navigate-outline" size={15} color={theme.brand} />
-                <Text style={{ color: theme.brand, fontWeight: "700" }}>Track bus</Text>
+                <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 14 }}>Track bus</Text>
               </Pressable>
             )}
           </View>
@@ -272,7 +272,7 @@ function TicketCard({
               onPress={() => router.push(`/bookings/${b.id}`)}
               style={[styles.secondaryButton, { borderColor: theme.border, alignSelf: "flex-start" }]}
             >
-              <Text style={{ color: theme.text, fontWeight: "600" }}>View booking</Text>
+              <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>View booking</Text>
             </Pressable>
             <Pressable
               onPress={confirmDelete}
@@ -349,7 +349,8 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 16, padding: Spacing.four },
   badgeRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  routeName: { fontSize: 17, fontWeight: "800", marginTop: 10 },
+  routeName: { fontSize: 16, fontWeight: "800", marginTop: 10, letterSpacing: -0.2 },
+  routeMeta: { fontSize: 13, marginTop: 3, lineHeight: 18 },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
