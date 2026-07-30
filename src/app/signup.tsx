@@ -22,12 +22,17 @@ import { Banner } from "@/components/banner";
 import { toE164 } from "@/lib/phone";
 import { Spacing } from "@/constants/theme";
 
+// Matches the backend's UpdateMyProfileDto.nic validation exactly — 9 digits
+// + V/X (old format) or 12 digits (new format).
+const NIC_RE = /^([0-9]{9}[vVxX]|[0-9]{12})$/;
+
 export default function SignUpScreen() {
   const theme = useTheme();
   const { next } = useLocalSearchParams<{ next?: string }>();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [nic, setNic] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [stage, setStage] = useState<"details" | "otp">("details");
@@ -40,6 +45,10 @@ export default function SignUpScreen() {
 
   async function createAccount() {
     setError(null);
+    if (!NIC_RE.test(nic.trim())) {
+      setError("Enter a valid NIC — 9 digits + V/X, or 12 digits.");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
@@ -66,7 +75,7 @@ export default function SignUpScreen() {
     const accessToken = data.session?.access_token;
     try {
       if (accessToken) {
-        await updateMyProfile(accessToken, { name, email: email || undefined });
+        await updateMyProfile(accessToken, { name, email: email || undefined, nic: nic.trim() });
       }
     } catch {
       // Profile fields can still be filled in later from the Profile tab —
@@ -112,6 +121,14 @@ export default function SignUpScreen() {
               theme={theme}
             />
             <Field
+              icon="card-outline"
+              label="NIC"
+              value={nic}
+              onChangeText={setNic}
+              placeholder="200012345678 or 991234567V"
+              theme={theme}
+            />
+            <Field
               icon="lock-closed-outline"
               label="Password"
               value={password}
@@ -125,10 +142,10 @@ export default function SignUpScreen() {
             {error && <Banner tone="error" message={error} />}
             <Pressable
               onPress={createAccount}
-              disabled={loading || !name || !phone || !password}
+              disabled={loading || !name || !phone || !nic || !password}
               style={[
                 styles.button,
-                { backgroundColor: theme.brand, opacity: loading || !name || !phone || !password ? 0.6 : 1 },
+                { backgroundColor: theme.brand, opacity: loading || !name || !phone || !nic || !password ? 0.6 : 1 },
               ]}
             >
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send verification code</Text>}
