@@ -22,6 +22,8 @@ import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popu
 import { NotificationBell } from "@/components/notification-bell";
 import { Spacing, BottomTabInset } from "@/constants/theme";
 
+const ROUTE_CARD_WIDTH = 220;
+
 // Date-only string in the device's local calendar day — NOT toISOString(),
 // which converts to UTC first and lands on the wrong day for anyone east of
 // UTC (e.g. Sri Lanka, UTC+5:30) between local midnight and the UTC rollover.
@@ -164,34 +166,76 @@ export default function SearchScreen() {
         {popularRoutes === null ? null : popularRoutes.length > 0 ? (
           <View style={styles.popularSection}>
             <Text style={[styles.popularTitle, { color: theme.text }]}>Popular routes</Text>
-            {popularRoutes.map((r) => (
-              <Pressable
-                key={`${r.originId}-${r.destId}`}
-                onPress={() => searchRoute(r)}
-                style={[styles.routeCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-              >
-                {r.imageUrl && <Image source={{ uri: r.imageUrl }} style={styles.routeCardImage} />}
-                <View style={styles.routeCardBody}>
-                  <View style={styles.routeCardHeading}>
-                    <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
-                      {r.originName}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={13} color={theme.textSecondary} />
-                    <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
-                      {r.destName}
-                    </Text>
-                  </View>
-                  <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 3 }}>
-                    {r.tripCount > 0
-                      ? `${r.tripCount} ${r.tripCount === 1 ? "trip" : "trips"} today${
-                          formatDuration(r.durationMinutes) ? ` · ${formatDuration(r.durationMinutes)}` : ""
-                        }`
-                      : "No buses scheduled today"}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-              </Pressable>
-            ))}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={ROUTE_CARD_WIDTH + Spacing.three}
+              decelerationRate="fast"
+              contentContainerStyle={styles.popularScrollContent}
+            >
+              {popularRoutes.map((r) => {
+                const dur = formatDuration(r.durationMinutes);
+                return (
+                  <Pressable
+                    key={`${r.originId}-${r.destId}`}
+                    onPress={() => searchRoute(r)}
+                    style={[styles.routeCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+                  >
+                    <View>
+                      {r.imageUrl ? (
+                        <Image source={{ uri: r.imageUrl }} style={styles.routeCardImage} />
+                      ) : (
+                        <View style={[styles.routeCardImage, styles.routeCardImageFallback, { backgroundColor: theme.brand }]}>
+                          <Ionicons name="bus" size={22} color="rgba(255,255,255,0.5)" />
+                        </View>
+                      )}
+                      <View style={styles.routeBadge}>
+                        <Text style={[styles.routeBadgeTop, { backgroundColor: theme.brand }]}>TODAY</Text>
+                        <View style={[styles.routeBadgeBottom, { backgroundColor: theme.backgroundElement }]}>
+                          <Text style={[styles.routeBadgeCount, { color: theme.text }]}>{r.tripCount}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.routeCardBody}>
+                      <View style={styles.routeCardHeading}>
+                        <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
+                          {r.originName}
+                        </Text>
+                        <Ionicons name="arrow-forward" size={13} color={theme.textSecondary} />
+                        <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
+                          {r.destName}
+                        </Text>
+                      </View>
+                      <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 3 }}>
+                        {r.tripCount > 0
+                          ? `${r.tripCount} ${r.tripCount === 1 ? "trip" : "trips"} today${dur ? ` · ${dur}` : ""}`
+                          : "No buses scheduled today"}
+                      </Text>
+
+                      <View style={[styles.routeDashedDivider, { borderColor: theme.border }]} />
+
+                      <View style={styles.routeFooterRow}>
+                        {r.minFare != null ? (
+                          <View>
+                            <Text style={[styles.routeFareLabel, { color: theme.textSecondary }]}>LKR</Text>
+                            <Text style={[styles.routeFareValue, { color: theme.brand }]}>
+                              {r.minFare.toLocaleString("en-LK", { maximumFractionDigits: 0 })}
+                            </Text>
+                            <Text style={[styles.routeFareLabel, { color: theme.textSecondary }]}>onwards</Text>
+                          </View>
+                        ) : (
+                          <Text style={{ color: theme.textSecondary, fontSize: 11 }}>No buses yet</Text>
+                        )}
+                        <View style={[styles.routeSearchButton, { backgroundColor: theme.brand }]}>
+                          <Text style={styles.routeSearchButtonText}>Search</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
         ) : null}
       </ScrollView>
@@ -347,20 +391,49 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  popularSection: { marginTop: Spacing.five, paddingHorizontal: Spacing.four, gap: Spacing.two },
-  popularTitle: { fontSize: 18, fontWeight: "800", marginBottom: Spacing.one },
+  popularSection: { marginTop: Spacing.five, gap: Spacing.two },
+  popularTitle: { fontSize: 18, fontWeight: "800", marginBottom: Spacing.one, paddingHorizontal: Spacing.four },
+  popularScrollContent: { paddingHorizontal: Spacing.four, gap: Spacing.three },
   routeCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    width: ROUTE_CARD_WIDTH,
     borderWidth: 1,
     borderRadius: 16,
-    padding: Spacing.three,
-    gap: Spacing.three,
+    overflow: "hidden",
   },
-  routeCardImage: { width: 48, height: 48, borderRadius: 10 },
-  routeCardBody: { flex: 1 },
+  routeCardImage: { width: "100%", height: 110 },
+  routeCardImageFallback: { alignItems: "center", justifyContent: "center" },
+  routeBadge: {
+    position: "absolute",
+    left: 10,
+    top: 10,
+    borderRadius: 10,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  routeBadgeTop: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "800",
+    textAlign: "center",
+    letterSpacing: 0.5,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  routeBadgeBottom: { paddingHorizontal: 10, paddingVertical: 4 },
+  routeBadgeCount: { fontSize: 15, fontWeight: "800", textAlign: "center" },
+  routeCardBody: { padding: Spacing.three },
   routeCardHeading: { flexDirection: "row", alignItems: "center", gap: 6 },
   routeCardText: { fontSize: 15, fontWeight: "700", flexShrink: 1 },
+  routeDashedDivider: { marginVertical: Spacing.three, borderTopWidth: 1, borderStyle: "dashed" },
+  routeFooterRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  routeFareLabel: { fontSize: 10, fontWeight: "600" },
+  routeFareValue: { fontSize: 18, fontWeight: "800", marginTop: 1 },
+  routeSearchButton: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  routeSearchButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
   datePickerSheet: {
     position: "absolute",
