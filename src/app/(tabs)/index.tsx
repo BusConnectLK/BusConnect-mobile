@@ -38,6 +38,21 @@ function todayIso() {
   return localDateIso(new Date());
 }
 
+/** Same calendar-day basis lib/popular-routes.ts uses, so "today"/"next trip" always agree. */
+function colomboTodayIso() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
+}
+
+/** "tomorrow" / "in 2 days" / "Fri, 2 Aug" for a yyyy-mm-dd relative to today. */
+function relativeDateLabel(dateIso: string, todayDateIso: string) {
+  const days = Math.round(
+    (new Date(`${dateIso}T00:00:00`).getTime() - new Date(`${todayDateIso}T00:00:00`).getTime()) / 86400000,
+  );
+  if (days === 1) return "tomorrow";
+  if (days > 1 && days <= 6) return `in ${days} days`;
+  return new Date(`${dateIso}T00:00:00`).toLocaleDateString("en-LK", { weekday: "short", day: "numeric", month: "short" });
+}
+
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-LK", { weekday: "short", day: "numeric", month: "short" });
 }
@@ -192,7 +207,7 @@ export default function SearchScreen() {
                       <View style={styles.routeBadge}>
                         <Text style={[styles.routeBadgeTop, { backgroundColor: theme.brand }]}>TODAY</Text>
                         <View style={[styles.routeBadgeBottom, { backgroundColor: theme.backgroundElement }]}>
-                          <Text style={[styles.routeBadgeCount, { color: theme.text }]}>{r.tripCount}</Text>
+                          <Text style={[styles.routeBadgeCount, { color: theme.text }]}>{r.todayCount}</Text>
                         </View>
                       </View>
                     </View>
@@ -208,9 +223,11 @@ export default function SearchScreen() {
                         </Text>
                       </View>
                       <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 3 }}>
-                        {r.tripCount > 0
-                          ? `${r.tripCount} ${r.tripCount === 1 ? "trip" : "trips"} today${dur ? ` · ${dur}` : ""}`
-                          : "No buses scheduled today"}
+                        {r.todayCount > 0
+                          ? `${r.todayCount} ${r.todayCount === 1 ? "trip" : "trips"} today${dur ? ` · ${dur}` : ""}`
+                          : r.nextDateIso
+                            ? `Next trip ${relativeDateLabel(r.nextDateIso, colomboTodayIso())}${dur ? ` · ${dur}` : ""}`
+                            : "No buses scheduled yet"}
                       </Text>
 
                       <View style={[styles.routeDashedDivider, { borderColor: theme.border }]} />

@@ -244,14 +244,14 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
           </View>
           <View style={styles.durationCol}>
             <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600" }}>{dur}</Text>
-            {overnight && (
-              <Text style={{ color: "#b45309", fontSize: 9, fontWeight: "700", marginTop: 1 }}>+1 day</Text>
-            )}
             <View style={styles.durationLine}>
               <View style={[styles.durationDash, { backgroundColor: theme.border }]} />
               <Ionicons name="arrow-forward" size={12} color={theme.textSecondary} />
               <View style={[styles.durationDash, { backgroundColor: theme.border }]} />
             </View>
+            {overnight && (
+              <Text style={{ color: "#b45309", fontSize: 10, fontWeight: "700", marginTop: 2 }}>Arrives next day</Text>
+            )}
           </View>
           <View style={{ flex: 1, alignItems: "flex-end" }}>
             <Text style={[styles.time, { color: theme.text }]}>{formatTime(trip.drop_at)}</Text>
