@@ -56,6 +56,8 @@ export interface TripSearchResult {
   route_name: string;
   from_stop_id: string;
   to_stop_id: string;
+  from_location_name: string;
+  to_location_name: string;
   boarding_at: string;
   drop_at: string;
   fare: number;

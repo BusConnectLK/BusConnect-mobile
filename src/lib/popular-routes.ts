@@ -24,11 +24,15 @@ interface RouteRow {
   dest: { name_en: string } | null;
 }
 
-interface TripRow {
-  depart_at: string;
-  arrive_est: string | null;
-  base_fare: number;
-  route: { origin_id: string; dest_id: string } | null;
+/** One row of popular_route_activity() — see BusConnect-api's 0043_popular_route_activity.sql. */
+interface ActivityRow {
+  origin_id: string;
+  dest_id: string;
+  trip_count: number;
+  today_count: number;
+  next_date: string | null;
+  min_duration_minutes: number | null;
+  min_fare: number | null;
 }
 
 type PairAgg = {
@@ -36,29 +40,30 @@ type PairAgg = {
   destId: string;
   originName: string;
   destName: string;
-  durations: number[];
-  fares: number[];
+  durationMinutes: number | null;
   count: number;
   todayCount: number;
   nextDateIso: string | null;
   imageUrl: string | null;
+  minFare: number | null;
 };
-
-/** Calendar date (Asia/Colombo) a timestamp falls on, as yyyy-mm-dd. */
-function colomboDateIso(iso: string) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Colombo" });
-}
 
 /**
  * Same aggregation as BusConnect-web's lib/popular-routes.ts, adapted to a
  * plain client-side Supabase read (no Next.js unstable_cache here) — every
  * published route is guaranteed to appear, ranked above ones without real
  * upcoming trips by how many trips actually exist for that corridor.
+ *
+ * Trip activity is counted by walking route_stops the same way
+ * search_trips() does (popular_route_activity() RPC), not by a trip's own
+ * route.origin_id/dest_id — a trip on a "Nittambuwa -> Colombo" route that
+ * also stops at Maradana is findable by searching "Nittambuwa -> Maradana",
+ * so it needs to count toward that corridor's card too.
  */
 export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]> {
   const byPair = new Map<string, PairAgg>();
 
-  const [{ data: routes, error: routesErr }, { data: trips, error: tripsErr }] = await Promise.all([
+  const [{ data: routes, error: routesErr }, { data: activity, error: activityErr }] = await Promise.all([
     supabase
       .from("routes")
       .select(
@@ -66,20 +71,10 @@ export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]>
          origin:locations!routes_origin_id_fkey ( name_en ),
          dest:locations!routes_dest_id_fkey ( name_en )`,
       ),
-    supabase
-      .from("trips")
-      .select(
-        `depart_at, arrive_est, base_fare,
-         route:routes!inner ( origin_id, dest_id ),
-         bus:buses!inner ( operator:operators!inner ( status ) )`,
-      )
-      .eq("bus.operator.status", "active")
-      .gte("depart_at", new Date().toISOString())
-      .in("status", ["scheduled", "boarding"])
-      .limit(500),
+    supabase.rpc("popular_route_activity"),
   ]);
   if (routesErr) console.error("listPopularRoutes: could not load the route catalog —", routesErr.message);
-  if (tripsErr) console.error("listPopularRoutes: could not load trip activity —", tripsErr.message);
+  if (activityErr) console.error("listPopularRoutes: could not load trip activity —", activityErr.message);
 
   for (const r of (routes ?? []) as unknown as RouteRow[]) {
     const key = `${r.origin_id}|${r.dest_id}`;
@@ -92,47 +87,24 @@ export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]>
         destId: r.dest_id,
         originName: r.origin?.name_en ?? "Unknown",
         destName: r.dest?.name_en ?? "Unknown",
-        durations: [],
-        fares: [],
+        durationMinutes: null,
         count: 0,
         todayCount: 0,
         nextDateIso: null,
         imageUrl: r.image_url,
+        minFare: null,
       });
     }
   }
 
-  const today = colomboDateIso(new Date().toISOString());
-
-  for (const row of (trips ?? []) as unknown as TripRow[]) {
-    const route = row.route;
-    if (!route) continue;
-    const key = `${route.origin_id}|${route.dest_id}`;
-    const duration = row.arrive_est
-      ? Math.round((new Date(row.arrive_est).getTime() - new Date(row.depart_at).getTime()) / 60000)
-      : null;
-
-    const existing = byPair.get(key) ?? {
-      originId: route.origin_id,
-      destId: route.dest_id,
-      originName: "Unknown",
-      destName: "Unknown",
-      durations: [],
-      fares: [],
-      count: 0,
-      todayCount: 0,
-      nextDateIso: null,
-      imageUrl: null,
-    };
-    existing.count += 1;
-    if (duration != null) existing.durations.push(duration);
-    if (row.base_fare != null) existing.fares.push(Number(row.base_fare));
-
-    const tripDate = colomboDateIso(row.depart_at);
-    if (tripDate === today) existing.todayCount += 1;
-    if (!existing.nextDateIso || tripDate < existing.nextDateIso) existing.nextDateIso = tripDate;
-
-    byPair.set(key, existing);
+  for (const row of (activity ?? []) as unknown as ActivityRow[]) {
+    const existing = byPair.get(`${row.origin_id}|${row.dest_id}`);
+    if (!existing) continue; // only card known catalog corridors, not every stop pair
+    existing.count = row.trip_count;
+    existing.todayCount = row.today_count;
+    existing.nextDateIso = row.next_date;
+    existing.durationMinutes = row.min_duration_minutes;
+    existing.minFare = row.min_fare;
   }
 
   const sorted = [...byPair.values()].sort(
@@ -143,12 +115,12 @@ export async function listPopularRoutes(limit?: number): Promise<PopularRoute[]>
     destId: r.destId,
     originName: r.originName,
     destName: r.destName,
-    durationMinutes: r.durations.length > 0 ? Math.min(...r.durations) : null,
+    durationMinutes: r.durationMinutes,
     tripCount: r.count,
     todayCount: r.todayCount,
     nextDateIso: r.nextDateIso,
     imageUrl: r.imageUrl,
-    minFare: r.fares.length > 0 ? Math.min(...r.fares) : null,
+    minFare: r.minFare,
   }));
   return limit != null ? mapped.slice(0, limit) : mapped;
 }

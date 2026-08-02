@@ -39,12 +39,6 @@ function duration(depart: string, arrive: string) {
   return `${h}h${m ? ` ${m}m` : ""}`;
 }
 
-function routeEndpoints(routeName: string): [string, string] {
-  const parts = routeName.split(/\s*-\s*/);
-  if (parts.length >= 2) return [parts[0], parts[parts.length - 1]];
-  return [routeName, ""];
-}
-
 export default function SearchResultsScreen() {
   const theme = useTheme();
   const { resolvedScheme } = useThemeMode();
@@ -186,7 +180,6 @@ export default function SearchResultsScreen() {
 function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<typeof useTheme> }) {
   const dur = duration(trip.boarding_at, trip.drop_at);
   const overnight = new Date(trip.drop_at).toDateString() !== new Date(trip.boarding_at).toDateString();
-  const [origin, destination] = routeEndpoints(trip.route_name);
   const amenities = trip.bus_amenities.slice(0, 4);
   const image = trip.bus_images[0];
 
@@ -239,7 +232,7 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
           <View style={{ flex: 1 }}>
             <Text style={[styles.time, { color: theme.text }]}>{formatTime(trip.boarding_at)}</Text>
             <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-              {origin}
+              {trip.from_location_name}
             </Text>
           </View>
           <View style={styles.durationCol}>
@@ -256,7 +249,7 @@ function TripCard({ trip, theme }: { trip: TripSearchResult; theme: ReturnType<t
           <View style={{ flex: 1, alignItems: "flex-end" }}>
             <Text style={[styles.time, { color: theme.text }]}>{formatTime(trip.drop_at)}</Text>
             <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-              {destination}
+              {trip.to_location_name}
             </Text>
           </View>
         </View>
