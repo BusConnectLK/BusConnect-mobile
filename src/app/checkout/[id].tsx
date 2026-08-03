@@ -2,34 +2,54 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { WebView, type WebViewNavigation } from "react-native-webview";
+import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
-import { checkoutBooking, ApiError, type WebXPayCheckout } from "@/lib/api";
+import { checkoutBooking, ApiError, type MpgsCheckoutSession } from "@/lib/api";
 import { Spacing } from "@/constants/theme";
 
-/** A minimal HTML page that auto-submits WebXPay's hosted-checkout form —
- * mirrors exactly what BusConnect-web's pay-button.tsx does with a real DOM
- * form, since WebXPay only accepts a browser POST, not a direct API call. */
-function checkoutHtml(checkout: WebXPayCheckout) {
-  const inputs = Object.entries(checkout.fields)
-    .map(([name, value]) => `<input type="hidden" name="${escapeAttr(name)}" value="${escapeAttr(value)}" />`)
-    .join("");
-  return `<!doctype html><html><body onload="document.forms[0].submit()">
-    <form method="POST" action="${escapeAttr(checkout.action)}">${inputs}</form>
+/**
+ * A minimal HTML shell that loads MPGS's hosted-checkout SDK and hands it
+ * only the session id — the SDK then does a full-page redirect to MPGS's own
+ * payment page inside this WebView. data-error/data-cancel are function
+ * *names* the SDK looks up on window, not URLs; they only fire for a problem
+ * before the page ever leaves (bad/expired session) — there is no
+ * client-side success callback for this flow at all.
+ */
+function checkoutHtml(checkout: MpgsCheckoutSession) {
+  return `<!doctype html><html><body>
+    <script>
+      window.mpgsErrorCallback = function (err) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "error", err: String(err) }));
+      };
+      window.mpgsCancelCallback = function () {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "cancel" }));
+      };
+    </script>
+    <script
+      src="${checkout.checkoutJsUrl}"
+      data-error="mpgsErrorCallback"
+      data-cancel="mpgsCancelCallback"
+    ></script>
+    <script>
+      (async function () {
+        try {
+          await window.Checkout.configure({ session: { id: "${checkout.sessionId}" } });
+          await window.Checkout.showPaymentPage();
+        } catch (err) {
+          window.mpgsErrorCallback(err);
+        }
+      })();
+    </script>
   </body></html>`;
-}
-
-function escapeAttr(value: string) {
-  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 }
 
 export default function CheckoutScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [checkout, setCheckout] = useState<WebXPayCheckout | null>(null);
+  const [checkout, setCheckout] = useState<MpgsCheckoutSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,11 +60,23 @@ export default function CheckoutScreen() {
   }, [id, session]);
 
   function onNavigate(nav: WebViewNavigation) {
-    // WebXPay's return_url resolves through our API to
+    // MPGS's return_url resolves through our API to
     // `${webBaseUrl}/bookings/{id}?...` — once the WebView reaches that,
     // hand off to the native ticket screen instead of rendering the web page.
     if (id && nav.url.includes(`/bookings/${id}`)) {
       router.replace({ pathname: "/bookings/[id]", params: { id } });
+    }
+  }
+
+  function onMessage(event: WebViewMessageEvent) {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === "error") {
+        setError("Payment could not start. Please try again.");
+      }
+      // "cancel" is rare for this redirect mode; leave the WebView showing.
+    } catch {
+      // ignore malformed messages
     }
   }
 
@@ -75,7 +107,7 @@ export default function CheckoutScreen() {
         {hero}
         <View style={styles.center}>
           <ActivityIndicator color={theme.brand} />
-          <Text style={{ color: theme.textSecondary, marginTop: 12 }}>Redirecting to WebXPay…</Text>
+          <Text style={{ color: theme.textSecondary, marginTop: 12 }}>Redirecting to secure checkout…</Text>
         </View>
       </View>
     );
@@ -88,6 +120,7 @@ export default function CheckoutScreen() {
         style={{ flex: 1 }}
         source={{ html: checkoutHtml(checkout) }}
         onNavigationStateChange={onNavigate}
+        onMessage={onMessage}
         onShouldStartLoadWithRequest={(req) => {
           if (id && req.url.includes(`/bookings/${id}`)) {
             router.replace({ pathname: "/bookings/[id]", params: { id } });

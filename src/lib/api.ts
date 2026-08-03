@@ -191,10 +191,10 @@ export interface BookingResult {
   amount: number;
 }
 
-/** WebXPay hosted-checkout redirect: POST `fields` to `action`. */
-export interface WebXPayCheckout {
-  action: string;
-  fields: Record<string, string>;
+/** MPGS Hosted Checkout: session id + SDK URL to hand to Checkout.configure(). */
+export interface MpgsCheckoutSession {
+  sessionId: string;
+  checkoutJsUrl: string;
 }
 
 /** Live GPS position from the conductor's device, if it's pushing one yet. */
@@ -306,7 +306,7 @@ export function hideBooking(accessToken: string, id: string) {
 }
 
 export function checkoutBooking(accessToken: string, bookingId: string) {
-  return request<WebXPayCheckout>(`/bookings/${bookingId}/pay`, {
+  return request<MpgsCheckoutSession>(`/bookings/${bookingId}/pay`, {
     method: "POST",
     accessToken,
   });
