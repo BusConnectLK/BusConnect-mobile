@@ -470,9 +470,10 @@ function WalletSection({
             <Text
               style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}
             >
-              {wallet
-                ? `LKR ${wallet.balance.toLocaleString("en-LK", { minimumFractionDigits: 2 })}`
-                : "—"}
+              LKR{" "}
+              {(wallet?.balance ?? 0).toLocaleString("en-LK", {
+                minimumFractionDigits: 2,
+              })}
             </Text>
           </View>
           <Ionicons

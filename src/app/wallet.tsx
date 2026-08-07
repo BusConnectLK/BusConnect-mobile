@@ -96,15 +96,9 @@ export default function WalletScreen() {
               ]}
             >
               <View style={styles.passBody}>
-                <View style={styles.passHeaderRow}>
-                  <Text style={[styles.passLabel, { color: theme.brand }]}>
-                    E-WALLET
-                  </Text>
-                  <View style={styles.activeBadge}>
-                    <View style={styles.activeDot} />
-                    <Text style={styles.activeText}>ACTIVE</Text>
-                  </View>
-                </View>
+                <Text style={[styles.passLabel, { color: theme.brand }]}>
+                  E-WALLET
+                </Text>
                 <Text
                   style={{
                     color: theme.textSecondary,
@@ -132,7 +126,7 @@ export default function WalletScreen() {
               >
                 <Text style={styles.balanceFooterLabel}>Balance</Text>
                 <Text style={styles.balanceFooterValue}>
-                  {wallet ? formatLkr(wallet.balance) : "—"}
+                  {formatLkr(wallet?.balance ?? 0)}
                 </Text>
               </View>
             </View>
@@ -260,31 +254,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 20,
     overflow: "hidden",
-    marginTop: -Spacing.four,
   },
   passBody: { padding: Spacing.four },
-  passHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   passLabel: { fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
-  activeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#dcfce7",
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#16a34a",
-  },
-  activeText: { color: "#16a34a", fontSize: 11, fontWeight: "700" },
   dashedDivider: {
     marginVertical: Spacing.three,
     borderTopWidth: 1,

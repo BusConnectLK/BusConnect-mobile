@@ -244,7 +244,7 @@ export default function CheckoutScreen() {
                   marginTop: 2,
                 }}
               >
-                {wallet ? `Balance: ${formatLkr(wallet.balance)}` : "—"}
+                Balance: {formatLkr(wallet?.balance ?? 0)}
                 {insufficientWallet ? " · Insufficient balance" : ""}
               </Text>
             </View>
