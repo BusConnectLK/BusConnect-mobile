@@ -150,11 +150,18 @@ export default function CheckoutScreen() {
       edges={["top"]}
       style={[styles.hero, { backgroundColor: theme.brand }]}
     >
-      <Pressable onPress={() => router.back()} hitSlop={8}>
-        <Ionicons name="chevron-back" size={22} color="#fff" />
-      </Pressable>
-      <Text style={styles.heroTitle}>Payment</Text>
-      <View style={{ width: 22 }} />
+      <View style={styles.heroTopRow}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={22} color="#fff" />
+        </Pressable>
+        <Text style={styles.heroTitle}>Payment</Text>
+        <View style={styles.backButton} />
+      </View>
+      <Text style={styles.heroSubtitle}>Choose how you&apos;d like to pay</Text>
     </SafeAreaView>
   );
 
@@ -312,14 +319,31 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   hero: {
+    alignItems: "center",
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  heroTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
+    width: "100%",
   },
-  heroTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  backButton: { width: 32 },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: Spacing.one,
+  },
   chooseContainer: { flex: 1, padding: Spacing.four },
   amountLabel: { fontSize: 13, textAlign: "center" },
   amountValue: {
