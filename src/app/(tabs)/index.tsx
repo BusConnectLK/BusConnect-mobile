@@ -295,9 +295,10 @@ export default function SearchScreen() {
               },
             ]}
           >
-            <View style={[styles.walletIcon, { backgroundColor: theme.brand }]}>
-              <Ionicons name="wallet-outline" size={18} color="#fff" />
-            </View>
+            <Image
+              source={require("../../../assets/images/applogo.png")}
+              style={styles.walletIcon}
+            />
             <View style={{ flex: 1 }}>
               <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
                 Wallet balance
@@ -690,9 +691,7 @@ const styles = StyleSheet.create({
   walletIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 12,
   },
   routeRow: { flexDirection: "row", alignItems: "stretch" },
   dotsColumn: { width: 16, alignItems: "center", paddingVertical: 6 },

@@ -82,7 +82,7 @@ export default function WalletScreen() {
 
       <FlatList
         contentContainerStyle={styles.list}
-        data={transactions ?? []}
+        data={(transactions ?? []).filter((t) => t.status === "completed")}
         keyExtractor={(t) => t.id}
         ListHeaderComponent={
           <>
@@ -97,7 +97,7 @@ export default function WalletScreen() {
             >
               <View style={styles.passBody}>
                 <Text style={[styles.passLabel, { color: theme.brand }]}>
-                  E-WALLET
+                  BusConnect Wallet
                 </Text>
                 <Text
                   style={{
@@ -178,11 +178,6 @@ export default function WalletScreen() {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
-                {item.status === "pending"
-                  ? " · Pending"
-                  : item.status === "failed"
-                    ? " · Failed"
-                    : ""}
               </Text>
             </View>
             <Text

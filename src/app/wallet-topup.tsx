@@ -21,7 +21,7 @@ import { useAuth } from "@/lib/auth";
 import { topupWallet, ApiError, type MpgsCheckoutSession } from "@/lib/api";
 import { Spacing } from "@/constants/theme";
 
-const PRESET_AMOUNTS = [500, 700, 1000, 2000, 5000];
+const PRESET_AMOUNTS = [500, 1000, 1500, 2000, 5000];
 const MIN_AMOUNT = 500;
 
 /** Same MPGS Hosted Checkout shell as the booking checkout screen — see
@@ -60,7 +60,7 @@ export default function WalletTopupScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const [stage, setStage] = useState<Stage>("amount");
-  const [amountText, setAmountText] = useState(String(PRESET_AMOUNTS[1]));
+  const [amountText, setAmountText] = useState(String(PRESET_AMOUNTS[0]));
   const [checkout, setCheckout] = useState<MpgsCheckoutSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,7 +120,7 @@ export default function WalletTopupScreen() {
         <Text style={styles.heroTitle}>Top Up Wallet</Text>
         <View style={styles.backButton} />
       </View>
-      <Text style={styles.heroSubtitle}>Add funds to your wallet</Text>
+      <Text style={styles.heroSubtitle}>Recharge Your Wallet</Text>
     </SafeAreaView>
   );
 

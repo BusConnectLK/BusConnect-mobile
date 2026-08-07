@@ -22,10 +22,8 @@ import { useAuth } from "@/lib/auth";
 import {
   getMyProfile,
   updateMyProfile,
-  getWallet,
   ApiError,
   type MyProfile,
-  type Wallet,
 } from "@/lib/api";
 import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
@@ -127,7 +125,7 @@ export default function ProfileScreen() {
             theme={theme}
           />
 
-          <WalletSection theme={theme} accessToken={session.access_token} />
+          <PaymentSection theme={theme} />
           <PreferencesSection theme={theme} session={session} />
           <SupportSection theme={theme} />
 
@@ -424,65 +422,45 @@ function ReadOnlyRow({
   );
 }
 
-function WalletSection({
-  theme,
-  accessToken,
-}: {
-  theme: ReturnType<typeof useTheme>;
-  accessToken: string;
-}) {
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-
-  useEffect(() => {
-    getWallet(accessToken)
-      .then(setWallet)
-      .catch(() => {
-        // Non-critical on the profile screen — the wallet screen itself will
-        // surface a proper error if something's actually wrong.
-      });
-  }, [accessToken]);
-
+function PaymentSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
   return (
     <View style={{ marginTop: Spacing.four }}>
       <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-        Wallet
+        Payment
       </Text>
-      <Pressable
-        onPress={() => router.push("/wallet")}
+      <View
         style={[
           styles.card,
           {
             backgroundColor: theme.backgroundElement,
             borderColor: theme.border,
+            gap: 0,
+            paddingVertical: Spacing.two,
           },
         ]}
       >
-        <View style={styles.walletRow}>
-          <View style={[styles.walletIcon, { backgroundColor: theme.brand }]}>
-            <Ionicons name="wallet-outline" size={18} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}
-            >
-              Wallet balance
-            </Text>
-            <Text
-              style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}
-            >
-              LKR{" "}
-              {(wallet?.balance ?? 0).toLocaleString("en-LK", {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
-          </View>
+        <Pressable
+          onPress={() => router.push("/payment-methods")}
+          style={styles.paymentRow}
+        >
+          <Ionicons name="card-outline" size={16} color={theme.textSecondary} />
+          <Text
+            style={{
+              color: theme.text,
+              fontWeight: "600",
+              fontSize: 14,
+              flex: 1,
+            }}
+          >
+            Add card
+          </Text>
           <Ionicons
             name="chevron-forward"
-            size={18}
+            size={16}
             color={theme.textSecondary}
           />
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -759,13 +737,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  walletRow: { flexDirection: "row", alignItems: "center", gap: Spacing.three },
-  walletIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  paymentRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
   },
   sectionLabel: {
     fontSize: 12,
