@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
@@ -35,10 +43,17 @@ function dateTime(iso: string | null) {
   });
 }
 function dateOnly(iso: string) {
-  return new Date(iso).toLocaleDateString("en-LK", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-LK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-const TAB_LABEL: Record<Tab, string> = { confirmed: "Confirmed", cancelled: "Cancelled" };
+const TAB_LABEL: Record<Tab, string> = {
+  confirmed: "Confirmed",
+  cancelled: "Cancelled",
+};
 const TABS: Tab[] = ["confirmed", "cancelled"];
 
 export default function TicketsScreen() {
@@ -60,9 +75,14 @@ export default function TicketsScreen() {
   useFocusEffect(load);
 
   const hero = (
-    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.hero, { backgroundColor: theme.brand }]}
+    >
       <Text style={styles.heroTitle}>My Tickets</Text>
-      <Text style={styles.heroSubtitle}>Track your bookings and boarding passes.</Text>
+      <Text style={styles.heroSubtitle}>
+        Track your bookings and boarding passes.
+      </Text>
     </SafeAreaView>
   );
 
@@ -82,8 +102,16 @@ export default function TicketsScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
-          <Pressable onPress={() => router.push({ pathname: "/login", params: { next: "/tickets" } })}>
-            <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}>Sign in to see your tickets</Text>
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: "/login", params: { next: "/tickets" } })
+            }
+          >
+            <Text
+              style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}
+            >
+              Sign in to see your tickets
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -119,7 +147,9 @@ export default function TicketsScreen() {
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={[styles.center, { gap: Spacing.three }]}>
-          <Text style={{ color: theme.textSecondary }}>You haven&apos;t booked any trips yet.</Text>
+          <Text style={{ color: theme.textSecondary }}>
+            You haven&apos;t booked any trips yet.
+          </Text>
           <Pressable
             onPress={() => router.push("/")}
             style={[styles.primaryButton, { backgroundColor: theme.brand }]}
@@ -141,7 +171,12 @@ export default function TicketsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {hero}
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { backgroundColor: theme.background },
+        ]}
+      >
         <View style={styles.tabRow}>
           {TABS.map((t) => (
             <Pressable
@@ -149,10 +184,20 @@ export default function TicketsScreen() {
               onPress={() => setTab(t)}
               style={[
                 styles.tabButton,
-                { backgroundColor: tab === t ? theme.brand : theme.backgroundElement, borderColor: theme.border },
+                {
+                  backgroundColor:
+                    tab === t ? theme.brand : theme.backgroundElement,
+                  borderColor: theme.border,
+                },
               ]}
             >
-              <Text style={{ color: tab === t ? "#fff" : theme.text, fontWeight: "600", fontSize: 13 }}>
+              <Text
+                style={{
+                  color: tab === t ? "#fff" : theme.text,
+                  fontWeight: "600",
+                  fontSize: 13,
+                }}
+              >
                 {TAB_LABEL[t]} {counts[t]}
               </Text>
             </Pressable>
@@ -160,8 +205,18 @@ export default function TicketsScreen() {
         </View>
 
         {shown.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            <Text style={{ color: theme.textSecondary }}>No {TAB_LABEL[tab].toLowerCase()} bookings.</Text>
+          <View
+            style={[
+              styles.emptyCard,
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={{ color: theme.textSecondary }}>
+              No {TAB_LABEL[tab].toLowerCase()} bookings.
+            </Text>
           </View>
         ) : (
           shown.map((b) => (
@@ -171,7 +226,11 @@ export default function TicketsScreen() {
               t={tab}
               theme={theme}
               accessToken={session.access_token}
-              onDeleted={() => setBookings((prev) => prev?.filter((x) => x.id !== b.id) ?? null)}
+              onDeleted={() =>
+                setBookings(
+                  (prev) => prev?.filter((x) => x.id !== b.id) ?? null,
+                )
+              }
             />
           ))
         )}
@@ -198,108 +257,179 @@ function TicketCard({
   const boarded = b.ticketStatus === "used";
 
   function confirmDelete() {
-    Alert.alert("Remove this ticket?", "This only removes it from your list — it won't affect any refund already in progress.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: () => {
-          setDeleting(true);
-          hideBooking(accessToken, b.id)
-            .then(onDeleted)
-            .catch((e) => {
-              setDeleting(false);
-              Alert.alert("Could not remove this ticket", e instanceof ApiError ? e.message : "Please try again.");
-            });
+    Alert.alert(
+      "Remove this ticket?",
+      "This only removes it from your list — it won't affect any refund already in progress.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            setDeleting(true);
+            hideBooking(accessToken, b.id)
+              .then(onDeleted)
+              .catch((e) => {
+                setDeleting(false);
+                Alert.alert(
+                  "Could not remove this ticket",
+                  e instanceof ApiError ? e.message : "Please try again.",
+                );
+              });
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <View style={styles.badgeRow}>
-        <Badge label={TAB_LABEL[t]} tone={t} />
-        {b.busClass && <Badge label={b.busClass.replace("_", " ")} tone="class" />}
-        {boarded && <Badge label="Boarded" tone="confirmed" />}
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+      ]}
+    >
+      <View style={styles.cardTop}>
+        <View style={styles.badgeRow}>
+          <Badge label={TAB_LABEL[t]} tone={t} />
+          {b.busClass && (
+            <Badge label={b.busClass.replace("_", " ")} tone="class" />
+          )}
+          {boarded && <Badge label="Boarded" tone="confirmed" />}
+        </View>
+
+        <Text style={[styles.routeName, { color: theme.text }]}>
+          {b.routeName ?? b.operatorName}
+        </Text>
+        <Text
+          style={[styles.routeMeta, { color: theme.textSecondary }]}
+          numberOfLines={2}
+        >
+          {dateTime(b.departAt)} · {b.operatorName}
+          {b.regNo ? ` · ${b.regNo}` : ""}
+        </Text>
       </View>
 
-      <Text style={[styles.routeName, { color: theme.text }]}>{b.routeName ?? b.operatorName}</Text>
-      <Text style={[styles.routeMeta, { color: theme.textSecondary }]} numberOfLines={2}>
-        {dateTime(b.departAt)} · {b.operatorName}
-        {b.regNo ? ` · ${b.regNo}` : ""}
-      </Text>
-
-      <View style={[styles.statsGrid, { borderTopColor: theme.border }]}>
-        <Stat label="Booking code" value={b.code} theme={theme} />
-        <Stat label={b.seats.length === 1 ? "Seat" : "Seats"} value={b.seats.join(", ")} theme={theme} />
-        <Stat label="Total paid" value={t === "confirmed" ? money(b.amount) : "—"} theme={theme} />
-        <Stat label="Booked on" value={dateOnly(b.createdAt)} theme={theme} />
+      <View style={styles.notchRow}>
+        <View
+          style={[
+            styles.notchCircle,
+            styles.notchLeft,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        />
+        <View style={[styles.dashedLine, { borderColor: theme.border }]} />
+        <View
+          style={[
+            styles.notchCircle,
+            styles.notchRight,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        />
       </View>
 
-      <View style={{ marginTop: Spacing.three }}>
-        {t === "confirmed" && b.qrSignature ? (
-          <View style={styles.actionRow}>
-            <Pressable
-              onPress={() => setOpen((v) => !v)}
-              style={[styles.primaryButton, { backgroundColor: theme.brand }]}
-            >
-              <Text style={styles.primaryButtonText}>{open ? "Hide QR" : "Show QR ticket"}</Text>
-            </Pressable>
-            {b.tripStatus !== "arrived" && b.tripStatus !== "cancelled" && (
+      <View style={styles.cardBottom}>
+        <View style={styles.statsGrid}>
+          <Stat label="Booking code" value={b.code} theme={theme} />
+          <Stat
+            label={b.seats.length === 1 ? "Seat" : "Seats"}
+            value={b.seats.join(", ")}
+            theme={theme}
+          />
+          <Stat
+            label="Total paid"
+            value={t === "confirmed" ? money(b.amount) : "—"}
+            theme={theme}
+          />
+          <Stat label="Booked on" value={dateOnly(b.createdAt)} theme={theme} />
+        </View>
+
+        <View style={{ marginTop: Spacing.three }}>
+          {t === "confirmed" && b.qrSignature ? (
+            <View style={styles.actionRow}>
               <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: "/track/[id]",
-                    params: {
-                      id: b.tripId,
-                      stopId: b.fromStopId,
-                      routeName: b.routeName ?? "",
-                      operatorName: b.operatorName,
-                    },
-                  })
-                }
-                style={[styles.secondaryButton, { borderColor: theme.brand }]}
+                onPress={() => setOpen((v) => !v)}
+                style={[styles.primaryButton, { backgroundColor: theme.brand }]}
               >
-                <Ionicons name="navigate-outline" size={15} color={theme.brand} />
-                <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 14 }}>Track bus</Text>
+                <Text style={styles.primaryButtonText}>
+                  {open ? "Hide QR" : "Show QR ticket"}
+                </Text>
               </Pressable>
-            )}
-          </View>
-        ) : (
-          <View style={styles.actionRow}>
-            <Pressable
-              onPress={() => router.push(`/bookings/${b.id}`)}
-              style={[styles.secondaryButton, { borderColor: theme.border, alignSelf: "flex-start" }]}
-            >
-              <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>View booking</Text>
-            </Pressable>
-            <Pressable
-              onPress={confirmDelete}
-              disabled={deleting}
-              hitSlop={8}
-              style={[styles.deleteButton, { borderColor: theme.border, opacity: deleting ? 0.5 : 1 }]}
-            >
-              {deleting ? (
-                <ActivityIndicator color="#dc2626" size="small" />
-              ) : (
-                <Ionicons name="trash-outline" size={18} color="#dc2626" />
+              {b.tripStatus !== "arrived" && b.tripStatus !== "cancelled" && (
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: "/track/[id]",
+                      params: {
+                        id: b.tripId,
+                        stopId: b.fromStopId,
+                        routeName: b.routeName ?? "",
+                        operatorName: b.operatorName,
+                      },
+                    })
+                  }
+                  style={[styles.secondaryButton, { borderColor: theme.brand }]}
+                >
+                  <Ionicons
+                    name="navigate-outline"
+                    size={14}
+                    color={theme.brand}
+                  />
+                  <Text
+                    style={{
+                      color: theme.brand,
+                      fontWeight: "700",
+                      fontSize: 13,
+                    }}
+                  >
+                    Track bus
+                  </Text>
+                </Pressable>
               )}
-            </Pressable>
+            </View>
+          ) : (
+            <View style={styles.actionRow}>
+              <Pressable
+                onPress={() => router.push(`/bookings/${b.id}`)}
+                style={[styles.secondaryButton, { borderColor: theme.border }]}
+              >
+                <Text
+                  style={{ color: theme.text, fontWeight: "600", fontSize: 13 }}
+                >
+                  View booking
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmDelete}
+                disabled={deleting}
+                hitSlop={8}
+                style={[
+                  styles.deleteButton,
+                  { borderColor: theme.border, opacity: deleting ? 0.5 : 1 },
+                ]}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#dc2626" size="small" />
+                ) : (
+                  <Ionicons name="trash-outline" size={18} color="#dc2626" />
+                )}
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {open && b.qrSignature && (
+          <View style={[styles.qrWrap, { borderTopColor: theme.border }]}>
+            <View style={[styles.qrBox, { borderColor: theme.border }]}>
+              <QRCode value={b.qrSignature} size={200} />
+            </View>
+            <Text style={[styles.qrHint, { color: theme.textSecondary }]}>
+              Show this at boarding · covers all {b.seats.length} seat
+              {b.seats.length === 1 ? "" : "s"}
+            </Text>
           </View>
         )}
       </View>
-
-      {open && b.qrSignature && (
-        <View style={[styles.qrWrap, { borderTopColor: theme.border }]}>
-          <View style={[styles.qrBox, { borderColor: theme.border }]}>
-            <QRCode value={b.qrSignature} size={200} />
-          </View>
-          <Text style={[styles.qrHint, { color: theme.textSecondary }]}>
-            Show this at boarding · covers all {b.seats.length} seat{b.seats.length === 1 ? "" : "s"}
-          </Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -313,18 +443,50 @@ function Badge({ label, tone }: { label: string; tone: Tab | "class" }) {
   const c = colors[tone];
   return (
     <View style={[styles.badge, { backgroundColor: c.bg }]}>
-      <Text style={{ color: c.fg, fontSize: 11, fontWeight: "700", textTransform: "uppercase" }}>{label}</Text>
+      <Text
+        style={{
+          color: c.fg,
+          fontSize: 11,
+          fontWeight: "700",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
-function Stat({ label, value, theme }: { label: string; value: string; theme: ReturnType<typeof useTheme> }) {
+function Stat({
+  label,
+  value,
+  theme,
+}: {
+  label: string;
+  value: string;
+  theme: ReturnType<typeof useTheme>;
+}) {
   return (
     <View style={styles.stat}>
-      <Text style={{ color: theme.textSecondary, fontSize: 11, textTransform: "uppercase", fontWeight: "600" }}>
+      <Text
+        style={{
+          color: theme.textSecondary,
+          fontSize: 11,
+          textTransform: "uppercase",
+          fontWeight: "600",
+        }}
+      >
         {label}
       </Text>
-      <Text style={{ color: theme.text, fontSize: 14, fontWeight: "700", marginTop: 2 }} numberOfLines={1}>
+      <Text
+        style={{
+          color: theme.text,
+          fontSize: 14,
+          fontWeight: "700",
+          marginTop: 2,
+        }}
+        numberOfLines={1}
+      >
         {value}
       </Text>
     </View>
@@ -339,37 +501,91 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: -0.3 },
-  heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one },
-  container: { flexGrow: 1, padding: Spacing.four, paddingBottom: Spacing.four + BottomTabInset, gap: Spacing.three },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: Spacing.one,
+  },
+  container: {
+    flexGrow: 1,
+    padding: Spacing.four,
+    paddingBottom: Spacing.four + BottomTabInset,
+    gap: Spacing.three,
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   tabRow: { flexDirection: "row", gap: Spacing.two },
-  tabButton: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
-  emptyCard: { borderWidth: 1, borderRadius: 16, padding: Spacing.five, alignItems: "center" },
-  card: { borderWidth: 1, borderRadius: 16, padding: Spacing.four },
+  tabButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  emptyCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.five,
+    alignItems: "center",
+  },
+  card: { borderWidth: 1, borderRadius: 16, overflow: "visible" },
+  cardTop: { padding: Spacing.four, paddingBottom: Spacing.three },
+  cardBottom: { padding: Spacing.four, paddingTop: Spacing.three },
   badgeRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  routeName: { fontSize: 16, fontWeight: "800", marginTop: 10, letterSpacing: -0.2 },
+  routeName: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 10,
+    letterSpacing: -0.2,
+  },
   routeMeta: { fontSize: 13, marginTop: 3, lineHeight: 18 },
+  notchRow: { height: 20, flexDirection: "row", alignItems: "center" },
+  notchCircle: {
+    position: "absolute",
+    top: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  notchLeft: { left: -12 },
+  notchRight: { right: -12 },
+  dashedLine: {
+    flex: 1,
+    marginHorizontal: 20,
+    borderTopWidth: 1,
+    borderStyle: "dashed",
+  },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: Spacing.three,
-    paddingTop: Spacing.three,
     gap: Spacing.three,
   },
   stat: { minWidth: "42%" },
-  actionRow: { flexDirection: "row", gap: Spacing.two, flexWrap: "wrap" },
-  primaryButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  actionRow: { flexDirection: "row", gap: Spacing.two },
+  primaryButton: {
+    flex: 1,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   secondaryButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
     paddingVertical: 10,
   },
   deleteButton: {
@@ -378,7 +594,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   qrWrap: {
     alignItems: "center",
@@ -386,6 +602,11 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.four,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  qrBox: { borderWidth: 1, borderRadius: 16, padding: 12, backgroundColor: "#fff" },
+  qrBox: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: "#fff",
+  },
   qrHint: { fontSize: 12, marginTop: Spacing.two, textAlign: "center" },
 });
