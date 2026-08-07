@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
@@ -54,7 +62,11 @@ export default function TrackScreen() {
     if (!id) return;
     getTripRoute(id)
       .then(setRoute)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Could not load the route."));
+      .catch((e) =>
+        setError(
+          e instanceof ApiError ? e.message : "Could not load the route.",
+        ),
+      );
   }, [id]);
 
   // Bus/operator details — fetched once, static for the trip.
@@ -122,12 +134,22 @@ export default function TrackScreen() {
       .channel(`trip-track:${id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "trip_gps", filter: `trip_id=eq.${id}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "trip_gps",
+          filter: `trip_id=eq.${id}`,
+        },
         refresh,
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "trips", filter: `id=eq.${id}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "trips",
+          filter: `id=eq.${id}`,
+        },
         refresh,
       )
       .subscribe();
@@ -151,7 +173,10 @@ export default function TrackScreen() {
     [route, stopId],
   );
 
-  const sheet = useMemo(() => deriveSheet(live, boardingName, now), [live, boardingName, now]);
+  const sheet = useMemo(
+    () => deriveSheet(live, boardingName, now),
+    [live, boardingName, now],
+  );
 
   const toggleNotify = useCallback(async () => {
     if (!notifyNear) {
@@ -187,7 +212,10 @@ export default function TrackScreen() {
         <View style={{ width: "100%", paddingHorizontal: Spacing.four }}>
           <Banner tone="error" message={error} />
         </View>
-        <Pressable onPress={() => router.back()} style={{ marginTop: Spacing.four }}>
+        <Pressable
+          onPress={() => router.back()}
+          style={{ marginTop: Spacing.four }}
+        >
           <Text style={{ color: theme.brand, fontWeight: "600" }}>Go back</Text>
         </Pressable>
       </View>
@@ -204,11 +232,23 @@ export default function TrackScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <TrackingMap route={route} boardingStopId={stopId ?? ""} position={position} />
+      <TrackingMap
+        route={route}
+        boardingStopId={stopId ?? ""}
+        position={position}
+      />
 
       {/* Top bar over the map */}
-      <SafeAreaView edges={["top"]} style={styles.topBar} pointerEvents="box-none">
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+      <SafeAreaView
+        edges={["top"]}
+        style={styles.topBar}
+        pointerEvents="box-none"
+      >
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={8}
+        >
           <Ionicons name="chevron-back" size={22} color="#111" />
         </Pressable>
         {routeName ? (
@@ -222,8 +262,11 @@ export default function TrackScreen() {
       </SafeAreaView>
 
       {/* Bottom sheet */}
-      <SafeAreaView edges={["bottom"]} style={styles.sheetWrap} pointerEvents="box-none">
-        <View style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}>
+      <View style={styles.sheetWrap} pointerEvents="box-none">
+        <SafeAreaView
+          edges={["bottom"]}
+          style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}
+        >
           <Pressable onPress={() => setCollapsed((v) => !v)} hitSlop={8}>
             <View style={[styles.grabber, { backgroundColor: theme.border }]} />
           </Pressable>
@@ -231,7 +274,11 @@ export default function TrackScreen() {
           <View style={styles.statusRow}>
             <View style={styles.statusRowLeft}>
               <StatusDot tone={sheet.tone} />
-              <Text style={[styles.statusLabel, { color: toneColor(sheet.tone) }]}>{sheet.label}</Text>
+              <Text
+                style={[styles.statusLabel, { color: toneColor(sheet.tone) }]}
+              >
+                {sheet.label}
+              </Text>
             </View>
             <View style={styles.statusRowLeft}>
               <Pressable
@@ -248,7 +295,12 @@ export default function TrackScreen() {
                   size={13}
                   color={notifyNear ? theme.brand : theme.textSecondary}
                 />
-                <Text style={[styles.notifyBtnText, { color: notifyNear ? theme.brand : theme.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.notifyBtnText,
+                    { color: notifyNear ? theme.brand : theme.textSecondary },
+                  ]}
+                >
                   {notifyNear ? "Notifying" : "Notify me"}
                 </Text>
               </Pressable>
@@ -265,59 +317,153 @@ export default function TrackScreen() {
           {!collapsed && (
             <>
               {sheet.etaMinutes != null ? (
-                <View style={styles.heroRow}>
-                  <Text style={[styles.etaBig, { color: theme.text }]}>{sheet.etaMinutes}</Text>
-                  <Text style={[styles.etaUnit, { color: theme.text }]}> min</Text>
+                <>
                   {boardingName ? (
-                    <Text style={[styles.etaTo, { color: theme.textSecondary }]}>  to {boardingName}</Text>
+                    <Text
+                      style={[styles.etaTo, { color: theme.textSecondary }]}
+                    >
+                      To {boardingName}
+                    </Text>
                   ) : null}
-                </View>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statBlock}>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        Travel time
+                      </Text>
+                      <View style={styles.statValueRow}>
+                        <Text style={[styles.statValue, { color: theme.text }]}>
+                          {sheet.etaMinutes}
+                        </Text>
+                        <Text style={[styles.statUnit, { color: theme.text }]}>
+                          {" "}
+                          min
+                        </Text>
+                      </View>
+                    </View>
+                    {sheet.distanceKm != null && (
+                      <View style={styles.statBlock}>
+                        <Text
+                          style={[
+                            styles.statLabel,
+                            { color: theme.textSecondary },
+                          ]}
+                        >
+                          Distance
+                        </Text>
+                        <View style={styles.statValueRow}>
+                          <Text
+                            style={[styles.statValue, { color: theme.text }]}
+                          >
+                            {sheet.distanceKm}
+                          </Text>
+                          <Text
+                            style={[styles.statUnit, { color: theme.text }]}
+                          >
+                            {" "}
+                            km
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </>
               ) : (
-                <Text style={[styles.heroTitle, { color: theme.text }]}>{sheet.title}</Text>
+                <Text style={[styles.heroTitle, { color: theme.text }]}>
+                  {sheet.title}
+                </Text>
               )}
 
-              {sheet.sub ? <Text style={[styles.sub, { color: theme.textSecondary }]}>{sheet.sub}</Text> : null}
+              {sheet.sub ? (
+                <Text style={[styles.sub, { color: theme.textSecondary }]}>
+                  {sheet.sub}
+                </Text>
+              ) : null}
 
               <View style={[styles.metaRow, { borderTopColor: theme.border }]}>
-                <Ionicons name="bus-outline" size={15} color={theme.textSecondary} />
-                <Text style={{ color: theme.textSecondary, fontSize: 13, flex: 1 }} numberOfLines={1}>
+                <Ionicons
+                  name="bus-outline"
+                  size={15}
+                  color={theme.textSecondary}
+                />
+                <Text
+                  style={{ color: theme.textSecondary, fontSize: 13, flex: 1 }}
+                  numberOfLines={1}
+                >
                   {operatorName ?? "Your bus"}
                   {tripDetail ? ` · ${tripDetail.bus.reg_no}` : ""}
                 </Text>
                 {sheet.speedKmh != null ? (
-                  <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{sheet.speedKmh} km/h</Text>
+                  <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
+                    {sheet.speedKmh} km/h
+                  </Text>
                 ) : null}
               </View>
 
               {(crew?.driver || crew?.conductor) && (
                 <View style={styles.infoCard}>
                   <View style={styles.crewRow}>
-                    {crew?.driver && <CrewChip label="Driver" member={crew.driver} theme={theme} />}
-                    {crew?.conductor && <CrewChip label="Conductor" member={crew.conductor} theme={theme} />}
+                    {crew?.driver && (
+                      <CrewChip
+                        label="Driver"
+                        member={crew.driver}
+                        theme={theme}
+                      />
+                    )}
+                    {crew?.conductor && (
+                      <CrewChip
+                        label="Conductor"
+                        member={crew.conductor}
+                        theme={theme}
+                      />
+                    )}
                   </View>
                 </View>
               )}
             </>
           )}
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     </View>
   );
 }
 
-function CrewChip({ label, member, theme }: { label: string; member: CrewMember; theme: Theme }) {
+function CrewChip({
+  label,
+  member,
+  theme,
+}: {
+  label: string;
+  member: CrewMember;
+  theme: Theme;
+}) {
   return (
     <View style={styles.crewChip}>
       {member.photoUrl ? (
         <Image source={{ uri: member.photoUrl }} style={styles.crewAvatar} />
       ) : (
-        <View style={[styles.crewAvatar, styles.crewAvatarPlaceholder, { backgroundColor: theme.brandSoft }]}>
+        <View
+          style={[
+            styles.crewAvatar,
+            styles.crewAvatarPlaceholder,
+            { backgroundColor: theme.brandSoft },
+          ]}
+        >
           <Ionicons name="person" size={14} color={theme.brand} />
         </View>
       )}
       <View style={{ flexShrink: 1 }}>
-        <Text style={[styles.crewLabel, { color: theme.textSecondary }]}>{label}</Text>
-        <Text style={[styles.crewName, { color: theme.text }]} numberOfLines={1}>
+        <Text style={[styles.crewLabel, { color: theme.textSecondary }]}>
+          {label}
+        </Text>
+        <Text
+          style={[styles.crewName, { color: theme.text }]}
+          numberOfLines={1}
+        >
           {member.name}
         </Text>
       </View>
@@ -332,18 +478,48 @@ interface SheetState {
   sub: string | null;
   etaMinutes: number | null;
   speedKmh: number | null;
+  distanceKm: number | null;
 }
 
-function deriveSheet(live: TripLive | null, boardingName: string | null, now: number): SheetState {
-  if (!live) return { tone: "idle", label: "Loading", title: "Locating your bus…", sub: null, etaMinutes: null, speedKmh: null };
+function deriveSheet(
+  live: TripLive | null,
+  boardingName: string | null,
+  now: number,
+): SheetState {
+  if (!live)
+    return {
+      tone: "idle",
+      label: "Loading",
+      title: "Locating your bus…",
+      sub: null,
+      etaMinutes: null,
+      speedKmh: null,
+      distanceKm: null,
+    };
 
   const status = live.status ?? "scheduled";
   const sharing = live.sharing ?? true;
 
   if (status === "arrived")
-    return { tone: "idle", label: "Completed", title: "Trip completed", sub: "This bus has finished its trip.", etaMinutes: null, speedKmh: null };
+    return {
+      tone: "idle",
+      label: "Completed",
+      title: "Trip completed",
+      sub: "This bus has finished its trip.",
+      etaMinutes: null,
+      speedKmh: null,
+      distanceKm: null,
+    };
   if (status === "cancelled")
-    return { tone: "idle", label: "Cancelled", title: "Trip cancelled", sub: null, etaMinutes: null, speedKmh: null };
+    return {
+      tone: "idle",
+      label: "Cancelled",
+      title: "Trip cancelled",
+      sub: null,
+      etaMinutes: null,
+      speedKmh: null,
+      distanceKm: null,
+    };
   if (status === "scheduled")
     return {
       tone: "idle",
@@ -352,36 +528,65 @@ function deriveSheet(live: TripLive | null, boardingName: string | null, now: nu
       sub: "Live tracking begins when the bus starts boarding.",
       etaMinutes: null,
       speedKmh: null,
+      distanceKm: null,
     };
 
   // boarding / departed
   if (!sharing)
-    return { tone: "paused", label: "Paused", title: "Location paused", sub: "The driver paused live location sharing.", etaMinutes: null, speedKmh: null };
+    return {
+      tone: "paused",
+      label: "Paused",
+      title: "Location paused",
+      sub: "The driver paused live location sharing.",
+      etaMinutes: null,
+      speedKmh: null,
+      distanceKm: null,
+    };
 
   if (!live.tracking)
     return {
       tone: "idle",
       label: status === "boarding" ? "Boarding" : "Starting",
-      title: status === "boarding" ? "Boarding at the stop" : "Starting the trip",
+      title:
+        status === "boarding" ? "Boarding at the stop" : "Starting the trip",
       sub: "Waiting for the bus's location…",
       etaMinutes: null,
       speedKmh: null,
+      distanceKm: null,
     };
 
   const ageMs = now - new Date(live.recorded_at).getTime();
   if (ageMs > STALE_MS) {
     const mins = Math.max(1, Math.round(ageMs / 60000));
-    return { tone: "stale", label: "Reconnecting", title: "Signal lost", sub: `Last seen ${mins} min ago`, etaMinutes: null, speedKmh: null };
+    return {
+      tone: "stale",
+      label: "Reconnecting",
+      title: "Signal lost",
+      sub: `Last seen ${mins} min ago`,
+      etaMinutes: null,
+      speedKmh: null,
+      distanceKm: null,
+    };
   }
 
   const speedKmh = live.speed_kmh != null ? Math.round(live.speed_kmh) : null;
+  const distanceKm =
+    live.distance_m != null
+      ? Math.round((live.distance_m / 1000) * 10) / 10
+      : null;
   return {
     tone: "live",
     label: "Live",
     title: status === "boarding" ? "Boarding at the stop" : "On the way",
-    sub: status === "boarding" ? "The bus is at the stop, boarding passengers." : boardingName ? null : "Heading to your stop.",
+    sub:
+      status === "boarding"
+        ? "The bus is at the stop, boarding passengers."
+        : boardingName
+          ? null
+          : "Heading to your stop.",
     etaMinutes: live.eta_minutes ?? null,
     speedKmh,
+    distanceKm,
   };
 }
 
@@ -455,8 +660,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -3 },
     elevation: 12,
   },
-  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: Spacing.three },
-  statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  grabber: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: Spacing.three,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   statusRowLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   notifyBtn: {
     flexDirection: "row",
@@ -469,12 +684,30 @@ const styles = StyleSheet.create({
   },
   notifyBtnText: { fontSize: 11, fontWeight: "700" },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  statusLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
-  heroRow: { flexDirection: "row", alignItems: "baseline", marginTop: Spacing.two },
-  etaBig: { fontSize: 40, fontWeight: "800", letterSpacing: -1 },
-  etaUnit: { fontSize: 20, fontWeight: "700" },
-  etaTo: { fontSize: 15, fontWeight: "500" },
-  heroTitle: { fontSize: 22, fontWeight: "800", marginTop: Spacing.two, letterSpacing: -0.3 },
+  statusLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  etaTo: { fontSize: 15, fontWeight: "500", marginTop: Spacing.two },
+  statsRow: { flexDirection: "row", gap: Spacing.five, marginTop: Spacing.two },
+  statBlock: {},
+  statLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  statValueRow: { flexDirection: "row", alignItems: "baseline", marginTop: 2 },
+  statValue: { fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
+  statUnit: { fontSize: 15, fontWeight: "700" },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginTop: Spacing.two,
+    letterSpacing: -0.3,
+  },
   sub: { fontSize: 13, marginTop: 4, lineHeight: 18 },
   metaRow: {
     flexDirection: "row",
@@ -486,9 +719,19 @@ const styles = StyleSheet.create({
   },
   infoCard: { marginTop: Spacing.three, gap: Spacing.two },
   crewRow: { flexDirection: "row", gap: Spacing.four },
-  crewChip: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+  crewChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 1,
+  },
   crewAvatar: { width: 32, height: 32, borderRadius: 16 },
   crewAvatarPlaceholder: { alignItems: "center", justifyContent: "center" },
-  crewLabel: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4 },
+  crewLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
   crewName: { fontSize: 13, fontWeight: "600" },
 });

@@ -17,10 +17,18 @@ export function toE164(localDigits: string): string {
   return `${PHONE_COUNTRY_CODE}${localDigits.replace(/\D/g, "")}`;
 }
 
-/** Formats a stored phone number for display with a leading "+" — Supabase
- *  stores it as E.164 digits only (no "+"), so a raw display would silently
- *  drop the country-code prefix. */
+/** Formats a stored phone number for display, grouped for readability
+ *  ("+94 76 467 8229") — Supabase stores it as E.164 digits only (no "+" or
+ *  spacing), so a raw display would silently drop the country-code prefix
+ *  and read as one long digit string. Falls back to a plain "+"-prefixed
+ *  string for numbers that aren't a standard 9-digit Sri Lankan local number
+ *  (e.g. malformed data) so nothing is ever hidden. */
 export function formatPhoneDisplay(phone: string | null | undefined): string {
   if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.startsWith("94") ? digits.slice(2) : digits;
+  if (local.length === 9) {
+    return `+94 ${local.slice(0, 2)} ${local.slice(2, 5)} ${local.slice(5, 9)}`;
+  }
   return phone.startsWith("+") ? phone : `+${phone}`;
 }
