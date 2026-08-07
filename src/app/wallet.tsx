@@ -5,7 +5,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,8 +21,6 @@ import {
 } from "@/lib/api";
 import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
-
-const PRESET_AMOUNTS = [500, 1000, 2000, 5000];
 
 function formatLkr(amount: number) {
   return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -44,7 +41,6 @@ export default function WalletScreen() {
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  const [amount, setAmount] = useState("");
 
   const load = useCallback(() => {
     if (!session) return;
@@ -65,14 +61,6 @@ export default function WalletScreen() {
 
   useFocusEffect(load);
 
-  function goTopup(value: number) {
-    if (!value || value < 100) return;
-    router.push({
-      pathname: "/wallet-topup",
-      params: { amount: String(value) },
-    });
-  }
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaView
@@ -87,13 +75,9 @@ export default function WalletScreen() {
           >
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </Pressable>
-          <Text style={styles.heroTitle}>Wallet</Text>
+          <Text style={styles.heroTitle}>My Wallet Details</Text>
           <View style={styles.backButton} />
         </View>
-        <Text style={styles.balanceLabel}>Balance</Text>
-        <Text style={styles.balanceValue}>
-          {wallet ? formatLkr(wallet.balance) : "—"}
-        </Text>
       </SafeAreaView>
 
       <FlatList
@@ -101,76 +85,57 @@ export default function WalletScreen() {
         data={transactions ?? []}
         keyExtractor={(t) => t.id}
         ListHeaderComponent={
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <Text style={[styles.cardTitle, { color: theme.text }]}>
-              Top up
-            </Text>
-            <View style={styles.presetRow}>
-              {PRESET_AMOUNTS.map((v) => (
-                <Pressable
-                  key={v}
-                  onPress={() => goTopup(v)}
-                  style={[styles.presetButton, { borderColor: theme.border }]}
-                >
-                  <Text
-                    style={{
-                      color: theme.text,
-                      fontWeight: "700",
-                      fontSize: 13,
-                    }}
-                  >
-                    LKR {v}
+          <>
+            <View
+              style={[
+                styles.passCard,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <View style={styles.passBody}>
+                <View style={styles.passHeaderRow}>
+                  <Text style={[styles.passLabel, { color: theme.brand }]}>
+                    E-WALLET
                   </Text>
-                </Pressable>
-              ))}
-            </View>
-            <View style={styles.customRow}>
-              <View style={[styles.inputWrap, { borderColor: theme.border }]}>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
-                  LKR
+                  <View style={styles.activeBadge}>
+                    <View style={styles.activeDot} />
+                    <Text style={styles.activeText}>ACTIVE</Text>
+                  </View>
+                </View>
+                <Text
+                  style={{
+                    color: theme.textSecondary,
+                    fontSize: 12,
+                    marginTop: 4,
+                  }}
+                >
+                  Use your balance to pay for tickets instantly
                 </Text>
-                <TextInput
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder="Custom amount"
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="number-pad"
-                  style={[styles.input, { color: theme.text }]}
+
+                <View
+                  style={[styles.dashedDivider, { borderColor: theme.border }]}
                 />
+
+                <Pressable
+                  onPress={() => router.push("/wallet-topup")}
+                  style={[styles.topupButton, { backgroundColor: theme.brand }]}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  <Text style={styles.topupButtonText}>Top up wallet</Text>
+                </Pressable>
               </View>
-              <Pressable
-                onPress={() => goTopup(Number(amount))}
-                disabled={!amount || Number(amount) < 100}
-                style={[
-                  styles.goButton,
-                  {
-                    backgroundColor: theme.brand,
-                    opacity: !amount || Number(amount) < 100 ? 0.5 : 1,
-                  },
-                ]}
+              <View
+                style={[styles.balanceFooter, { backgroundColor: theme.brand }]}
               >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>Top up</Text>
-              </Pressable>
+                <Text style={styles.balanceFooterLabel}>Balance</Text>
+                <Text style={styles.balanceFooterValue}>
+                  {wallet ? formatLkr(wallet.balance) : "—"}
+                </Text>
+              </View>
             </View>
-            {!amount || Number(amount) >= 100 ? null : (
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 12,
-                  marginTop: Spacing.two,
-                }}
-              >
-                Minimum top-up is LKR 100.
-              </Text>
-            )}
 
             {error && (
               <View style={{ marginTop: Spacing.three }}>
@@ -181,7 +146,7 @@ export default function WalletScreen() {
             <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
               Recent activity
             </Text>
-          </View>
+          </>
         }
         renderItem={({ item }) => (
           <View style={[styles.txRow, { borderColor: theme.border }]}>
@@ -286,62 +251,65 @@ const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: -0.3,
   },
-  balanceLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 13,
-    marginTop: Spacing.four,
-  },
-  balanceValue: {
-    color: "#fff",
-    fontSize: 34,
-    fontWeight: "800",
-    marginTop: 4,
-    letterSpacing: -0.5,
-  },
   list: {
     padding: Spacing.four,
     paddingBottom: Spacing.four + BottomTabInset,
     gap: Spacing.two,
   },
-  card: {
+  passCard: {
     borderWidth: 1,
     borderRadius: 20,
-    padding: Spacing.four,
+    overflow: "hidden",
     marginTop: -Spacing.four,
   },
-  cardTitle: { fontSize: 15, fontWeight: "700" },
-  presetRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.two,
-    marginTop: Spacing.three,
-  },
-  presetButton: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
-  },
-  customRow: {
-    flexDirection: "row",
-    gap: Spacing.two,
-    marginTop: Spacing.three,
-  },
-  inputWrap: {
-    flex: 1,
+  passBody: { padding: Spacing.four },
+  passHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
+    justifyContent: "space-between",
   },
-  input: { flex: 1, paddingVertical: Spacing.three, fontSize: 15 },
-  goButton: {
+  passLabel: { fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
+  activeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#dcfce7",
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#16a34a",
+  },
+  activeText: { color: "#16a34a", fontSize: 11, fontWeight: "700" },
+  dashedDivider: {
+    marginVertical: Spacing.three,
+    borderTopWidth: 1,
+    borderStyle: "dashed",
+  },
+  topupButton: {
+    flexDirection: "row",
+    gap: 8,
     borderRadius: 12,
-    paddingHorizontal: Spacing.four,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  topupButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  balanceFooter: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  balanceFooterLabel: { color: "rgba(255,255,255,0.8)", fontSize: 12 },
+  balanceFooterValue: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "800",
+    marginTop: 2,
+    letterSpacing: -0.3,
   },
   sectionLabel: {
     fontSize: 12,
