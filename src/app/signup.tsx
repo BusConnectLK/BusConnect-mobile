@@ -67,7 +67,11 @@ export default function SignUpScreen() {
   async function verifyAndFinish() {
     setError(null);
     setLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({ phone: toE164(phone), token: otp, type: "sms" });
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: toE164(phone),
+      token: otp,
+      type: "sms",
+    });
     if (error) {
       setLoading(false);
       return setError(error.message);
@@ -75,7 +79,11 @@ export default function SignUpScreen() {
     const accessToken = data.session?.access_token;
     try {
       if (accessToken) {
-        await updateMyProfile(accessToken, { name, email: email || undefined, nic: nic.trim() });
+        await updateMyProfile(accessToken, {
+          name,
+          email: email || undefined,
+          nic: nic.trim(),
+        });
       }
     } catch {
       // Profile fields can still be filled in later from the Profile tab —
@@ -87,109 +95,172 @@ export default function SignUpScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <View style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[styles.hero, { backgroundColor: theme.brand }]}
+      >
+        <Image
+          source={require("../../assets/images/applogo.png")}
+          style={styles.logo}
+        />
+        <Text style={styles.heroTitle}>Create your account</Text>
+        <Text style={styles.heroSubtitle}>
+          {stage === "details"
+            ? "Just a few details, then we'll verify your number with a one-time code."
+            : `Enter the code sent to ${toE164(phone)}.`}
+        </Text>
+      </SafeAreaView>
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Image source={require("../../assets/images/applogo.png")} style={styles.logo} />
-
-          <Text style={[styles.title, { color: theme.text }]}>Create your account</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {stage === "details"
-              ? "Just a few details, then we'll verify your number with a one-time code."
-              : `Enter the code sent to ${toE164(phone)}.`}
-          </Text>
-
           <View style={styles.form}>
             {stage === "details" ? (
-          <>
-            <Field icon="person-outline" label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
-            <View style={{ marginBottom: Spacing.three }}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
-              <PhoneField value={phone} onChangeText={setPhone} />
-            </View>
-            <Field
-              icon="mail-outline"
-              label="Email (optional)"
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@email.lk"
-              keyboardType="email-address"
-              theme={theme}
-            />
-            <Field
-              icon="card-outline"
-              label="NIC"
-              value={nic}
-              onChangeText={setNic}
-              placeholder="200012345678 or 991234567V"
-              theme={theme}
-            />
-            <Field
-              icon="lock-closed-outline"
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="At least 6 characters"
-              secureTextEntry
-              autoComplete="new-password"
-              theme={theme}
-            />
+              <>
+                <Field
+                  icon="person-outline"
+                  label="Full name"
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your full name"
+                  theme={theme}
+                />
+                <View style={{ marginBottom: Spacing.three }}>
+                  <Text
+                    style={[styles.fieldLabel, { color: theme.textSecondary }]}
+                  >
+                    Phone number
+                  </Text>
+                  <PhoneField value={phone} onChangeText={setPhone} />
+                </View>
+                <Field
+                  icon="mail-outline"
+                  label="Email (optional)"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@email.lk"
+                  keyboardType="email-address"
+                  theme={theme}
+                />
+                <Field
+                  icon="card-outline"
+                  label="NIC"
+                  value={nic}
+                  onChangeText={setNic}
+                  placeholder="200012345678 or 991234567V"
+                  theme={theme}
+                />
+                <Field
+                  icon="lock-closed-outline"
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="At least 6 characters"
+                  secureTextEntry
+                  autoComplete="new-password"
+                  theme={theme}
+                />
 
-            {error && <Banner tone="error" message={error} />}
-            <Pressable
-              onPress={createAccount}
-              disabled={loading || !name || !phone || !nic || !password}
-              style={[
-                styles.button,
-                { backgroundColor: theme.brand, opacity: loading || !name || !phone || !nic || !password ? 0.6 : 1 },
-              ]}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send verification code</Text>}
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <Field
-              icon="keypad-outline"
-              label="One-time code"
-              value={otp}
-              onChangeText={setOtp}
-              placeholder="6-digit code"
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              letterSpacing={6}
-              theme={theme}
-            />
-            {error && <Banner tone="error" message={error} />}
-            <Pressable
-              onPress={verifyAndFinish}
-              disabled={loading || !otp}
-              style={[styles.button, { backgroundColor: theme.brand, opacity: loading || !otp ? 0.6 : 1 }]}
-            >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Verify & create account</Text>}
-            </Pressable>
-            <Pressable onPress={() => setStage("details")} style={{ marginTop: Spacing.three, alignItems: "center" }}>
-              <Text style={{ color: theme.textSecondary, textDecorationLine: "underline" }}>Edit details</Text>
-            </Pressable>
-          </>
-        )}
+                {error && <Banner tone="error" message={error} />}
+                <Pressable
+                  onPress={createAccount}
+                  disabled={loading || !name || !phone || !nic || !password}
+                  style={[
+                    styles.button,
+                    {
+                      backgroundColor: theme.brand,
+                      opacity:
+                        loading || !name || !phone || !nic || !password
+                          ? 0.6
+                          : 1,
+                    },
+                  ]}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>
+                      Send verification code
+                    </Text>
+                  )}
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Field
+                  icon="keypad-outline"
+                  label="One-time code"
+                  value={otp}
+                  onChangeText={setOtp}
+                  placeholder="6-digit code"
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  letterSpacing={6}
+                  theme={theme}
+                />
+                {error && <Banner tone="error" message={error} />}
+                <Pressable
+                  onPress={verifyAndFinish}
+                  disabled={loading || !otp}
+                  style={[
+                    styles.button,
+                    {
+                      backgroundColor: theme.brand,
+                      opacity: loading || !otp ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>
+                      Verify & create account
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => setStage("details")}
+                  style={{ marginTop: Spacing.three, alignItems: "center" }}
+                >
+                  <Text
+                    style={{
+                      color: theme.textSecondary,
+                      textDecorationLine: "underline",
+                    }}
+                  >
+                    Edit details
+                  </Text>
+                </Pressable>
+              </>
+            )}
 
-        <Pressable
-          onPress={() => router.replace({ pathname: "/login", params: { next: (next as string) || undefined } })}
-          style={{ marginTop: Spacing.four, alignItems: "center" }}
-        >
-          <Text style={{ color: theme.textSecondary }}>
-            Already have an account? <Text style={{ color: theme.brand, fontWeight: "700" }}>Sign in</Text>
-          </Text>
-        </Pressable>
+            <Pressable
+              onPress={() =>
+                router.replace({
+                  pathname: "/login",
+                  params: { next: (next as string) || undefined },
+                })
+              }
+              style={{ marginTop: Spacing.four, alignItems: "center" }}
+            >
+              <Text style={{ color: theme.textSecondary }}>
+                Already have an account?{" "}
+                <Text style={{ color: theme.brand, fontWeight: "700" }}>
+                  Sign in
+                </Text>
+              </Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -218,7 +289,9 @@ function Field({
 }) {
   return (
     <View style={{ marginBottom: Spacing.three }}>
-      <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{label}</Text>
+      <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
+        {label}
+      </Text>
       <View style={[styles.inputWrap, { borderColor: theme.border }]}>
         <Ionicons name={icon} size={18} color={theme.textSecondary} />
         <TextInput
@@ -239,20 +312,45 @@ function Field({
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
+  hero: {
+    alignItems: "center",
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
   flex: { flex: 1 },
-  container: { flexGrow: 1, padding: Spacing.five, paddingTop: Spacing.six, alignItems: "center" },
-  logo: { width: 64, height: 64, borderRadius: 16, marginBottom: Spacing.three },
-  title: { fontSize: 26, fontWeight: "800", textAlign: "center" },
-  subtitle: {
-    fontSize: 14,
+  container: { flexGrow: 1, padding: Spacing.five, alignItems: "center" },
+  logo: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    marginBottom: Spacing.three,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
     textAlign: "center",
-    marginTop: Spacing.two,
-    marginBottom: Spacing.six,
-    lineHeight: 20,
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    textAlign: "center",
+    marginTop: Spacing.one,
+    lineHeight: 19,
     maxWidth: 300,
   },
   form: { width: "100%" },
-  fieldLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -262,6 +360,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   input: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
-  button: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: Spacing.one },
+  button: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: Spacing.one,
+  },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 });

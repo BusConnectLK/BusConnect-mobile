@@ -19,11 +19,24 @@ import type { Session } from "@supabase/supabase-js";
 import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
 import { useAuth } from "@/lib/auth";
-import { getMyProfile, updateMyProfile, ApiError, type MyProfile } from "@/lib/api";
+import {
+  getMyProfile,
+  updateMyProfile,
+  getWallet,
+  ApiError,
+  type MyProfile,
+  type Wallet,
+} from "@/lib/api";
 import { PhoneField } from "@/components/phone-field";
 import { stripCountryCode, toE164, formatPhoneDisplay } from "@/lib/phone";
-import { getPushNotificationsEnabled, setPushNotificationsEnabled } from "@/lib/notification-preference";
-import { registerForPushNotifications, unregisterCurrentPushToken } from "@/lib/push-notifications";
+import {
+  getPushNotificationsEnabled,
+  setPushNotificationsEnabled,
+} from "@/lib/notification-preference";
+import {
+  registerForPushNotifications,
+  unregisterCurrentPushToken,
+} from "@/lib/push-notifications";
 import { openStoreReview, openWhatsAppSupport } from "@/lib/app-links";
 import { Banner } from "@/components/banner";
 import { Spacing, BottomTabInset } from "@/constants/theme";
@@ -44,7 +57,11 @@ export default function ProfileScreen() {
     if (!session) return;
     getMyProfile(session.access_token)
       .then(setProfile)
-      .catch((e) => setLoadError(e instanceof ApiError ? e.message : "Could not reach BusConnect-api."));
+      .catch((e) =>
+        setLoadError(
+          e instanceof ApiError ? e.message : "Could not reach BusConnect-api.",
+        ),
+      );
   }, [session]);
 
   if (authLoading) {
@@ -58,8 +75,14 @@ export default function ProfileScreen() {
   if (!session) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Pressable onPress={() => router.push({ pathname: "/login", params: { next: "/profile" } })}>
-          <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}>Sign in to view your profile</Text>
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: "/login", params: { next: "/profile" } })
+          }
+        >
+          <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 16 }}>
+            Sign in to view your profile
+          </Text>
         </Pressable>
       </View>
     );
@@ -85,48 +108,71 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ProfileHero profile={profile} theme={theme} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ProfileHero profile={profile} theme={theme} />
 
-        <ProfileForm
-          profile={profile}
-          accessToken={session.access_token}
-          provider={session.user.app_metadata?.provider ?? null}
-          onSaved={setProfile}
-          theme={theme}
-        />
+          <ProfileForm
+            profile={profile}
+            accessToken={session.access_token}
+            provider={session.user.app_metadata?.provider ?? null}
+            onSaved={setProfile}
+            theme={theme}
+          />
 
-        <PreferencesSection theme={theme} session={session} />
-        <SupportSection theme={theme} />
+          <WalletSection theme={theme} accessToken={session.access_token} />
+          <PreferencesSection theme={theme} session={session} />
+          <SupportSection theme={theme} />
 
-        <Pressable onPress={handleSignOut} style={styles.dangerButton}>
-          <Ionicons name="log-out-outline" size={17} color="#fff" />
-          <Text style={styles.dangerButtonText}>Sign out</Text>
-        </Pressable>
+          <Pressable onPress={handleSignOut} style={styles.dangerButton}>
+            <Ionicons name="log-out-outline" size={17} color="#fff" />
+            <Text style={styles.dangerButtonText}>Sign out</Text>
+          </Pressable>
 
-        <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: Spacing.four }]}>Danger zone</Text>
-        <Pressable onPress={() => router.push("/delete-account")} style={styles.dangerButton}>
-          <Ionicons name="trash-outline" size={17} color="#fff" />
-          <Text style={styles.dangerButtonText}>Delete account</Text>
-        </Pressable>
-      </ScrollView>
+          <Text
+            style={[
+              styles.sectionLabel,
+              { color: theme.textSecondary, marginTop: Spacing.four },
+            ]}
+          >
+            Danger zone
+          </Text>
+          <Pressable
+            onPress={() => router.push("/delete-account")}
+            style={styles.dangerButton}
+          >
+            <Ionicons name="trash-outline" size={17} color="#fff" />
+            <Text style={styles.dangerButtonText}>Delete account</Text>
+          </Pressable>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
-function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType<typeof useTheme> }) {
+function ProfileHero({
+  profile,
+  theme,
+}: {
+  profile: MyProfile;
+  theme: ReturnType<typeof useTheme>;
+}) {
   const [imageFailed, setImageFailed] = useState(false);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (profile.avatar_url !== failedUrl && imageFailed) setImageFailed(false);
 
   return (
-    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.hero, { backgroundColor: theme.brand }]}
+    >
       {profile.avatar_url && !imageFailed ? (
         <Image
           source={{ uri: profile.avatar_url }}
@@ -142,7 +188,9 @@ function ProfileHero({ profile, theme }: { profile: MyProfile; theme: ReturnType
         </View>
       )}
       <Text style={styles.heroName}>{profile.name || "Add your name"}</Text>
-      <Text style={styles.heroSubtitle}>{formatPhoneDisplay(profile.phone)}</Text>
+      <Text style={styles.heroSubtitle}>
+        {formatPhoneDisplay(profile.phone)}
+      </Text>
     </SafeAreaView>
   );
 }
@@ -214,23 +262,43 @@ function ProfileForm({
   }
 
   return (
-    <View style={[styles.card, styles.firstCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View
+      style={[
+        styles.card,
+        styles.firstCard,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+      ]}
+    >
       <View style={styles.cardTitleRow}>
-        <Text style={[styles.cardTitle, { color: theme.text }]}>Personal information</Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>
+          Personal information
+        </Text>
         {!isEditing && (
           <Pressable onPress={startEditing} hitSlop={8} style={styles.editLink}>
-            <Text style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}>Edit</Text>
+            <Text
+              style={{ color: theme.brand, fontWeight: "600", fontSize: 13 }}
+            >
+              Edit
+            </Text>
           </Pressable>
         )}
       </View>
 
       {isEditing ? (
         <>
-          <Field label="Full name" value={name} onChangeText={setName} placeholder="Your full name" theme={theme} />
+          <Field
+            label="Full name"
+            value={name}
+            onChangeText={setName}
+            placeholder="Your full name"
+            theme={theme}
+          />
 
           {!phoneLocked && (
             <View style={{ marginTop: Spacing.three }}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Phone number</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
+                Phone number
+              </Text>
               <PhoneField value={phone} onChangeText={setPhone} />
             </View>
           )}
@@ -264,26 +332,60 @@ function ProfileForm({
             <Pressable
               onPress={cancelEditing}
               disabled={busy}
-              style={[styles.cancelButton, { borderColor: theme.border, opacity: busy ? 0.6 : 1 }]}
+              style={[
+                styles.cancelButton,
+                { borderColor: theme.border, opacity: busy ? 0.6 : 1 },
+              ]}
             >
-              <Text style={{ color: theme.text, fontWeight: "600" }}>Cancel</Text>
+              <Text style={{ color: theme.text, fontWeight: "600" }}>
+                Cancel
+              </Text>
             </Pressable>
             <Pressable
               onPress={submit}
               disabled={busy}
-              style={[styles.saveButton, { backgroundColor: theme.brand, opacity: busy ? 0.6 : 1, flex: 1, marginTop: 0 }]}
+              style={[
+                styles.saveButton,
+                {
+                  backgroundColor: theme.brand,
+                  opacity: busy ? 0.6 : 1,
+                  flex: 1,
+                  marginTop: 0,
+                },
+              ]}
             >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>{status ?? "Save changes"}</Text>}
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>
+                  {status ?? "Save changes"}
+                </Text>
+              )}
             </Pressable>
           </View>
         </>
       ) : (
         <View style={{ marginTop: Spacing.two }}>
           <ReadOnlyRow label="Full name" value={profile.name} theme={theme} />
-          <ReadOnlyRow label="Phone number" value={formatPhoneDisplay(profile.phone)} theme={theme} />
+          <ReadOnlyRow
+            label="Phone number"
+            value={formatPhoneDisplay(profile.phone)}
+            theme={theme}
+          />
           <ReadOnlyRow label="NIC" value={profile.nic} theme={theme} />
-          {!emailLocked && <ReadOnlyRow label="Email address" value={profile.email} theme={theme} last />}
-          {saved && <Text style={{ color: "#059669", marginTop: Spacing.two }}>Saved.</Text>}
+          {!emailLocked && (
+            <ReadOnlyRow
+              label="Email address"
+              value={profile.email}
+              theme={theme}
+              last
+            />
+          )}
+          {saved && (
+            <Text style={{ color: "#059669", marginTop: Spacing.two }}>
+              Saved.
+            </Text>
+          )}
         </View>
       )}
     </View>
@@ -302,16 +404,95 @@ function ReadOnlyRow({
   last?: boolean;
 }) {
   return (
-    <View style={[styles.readOnlyRow, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}>
+    <View
+      style={[
+        styles.readOnlyRow,
+        !last && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: theme.border,
+        },
+      ]}
+    >
       <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{label}</Text>
-      <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }} numberOfLines={1}>
+      <Text
+        style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}
+        numberOfLines={1}
+      >
         {value || "—"}
       </Text>
     </View>
   );
 }
 
-function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTheme>; session: Session | null }) {
+function WalletSection({
+  theme,
+  accessToken,
+}: {
+  theme: ReturnType<typeof useTheme>;
+  accessToken: string;
+}) {
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+
+  useEffect(() => {
+    getWallet(accessToken)
+      .then(setWallet)
+      .catch(() => {
+        // Non-critical on the profile screen — the wallet screen itself will
+        // surface a proper error if something's actually wrong.
+      });
+  }, [accessToken]);
+
+  return (
+    <View style={{ marginTop: Spacing.four }}>
+      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+        Wallet
+      </Text>
+      <Pressable
+        onPress={() => router.push("/wallet")}
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <View style={styles.walletRow}>
+          <View style={[styles.walletIcon, { backgroundColor: theme.brand }]}>
+            <Ionicons name="wallet-outline" size={18} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}
+            >
+              Wallet balance
+            </Text>
+            <Text
+              style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}
+            >
+              {wallet
+                ? `LKR ${wallet.balance.toLocaleString("en-LK", { minimumFractionDigits: 2 })}`
+                : "—"}
+            </Text>
+          </View>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={theme.textSecondary}
+          />
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+function PreferencesSection({
+  theme,
+  session,
+}: {
+  theme: ReturnType<typeof useTheme>;
+  session: Session | null;
+}) {
   const { mode, setMode } = useThemeMode();
   const [pushEnabled, setPushEnabled] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
@@ -339,7 +520,11 @@ function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTh
     }
   }
 
-  const modes: { key: "light" | "dark" | "system"; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  const modes: {
+    key: "light" | "dark" | "system";
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+  }[] = [
     { key: "light", label: "Light", icon: "sunny-outline" },
     { key: "dark", label: "Dark", icon: "moon-outline" },
     { key: "system", label: "System", icon: "phone-portrait-outline" },
@@ -347,10 +532,27 @@ function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTh
 
   return (
     <View style={{ marginTop: Spacing.four }}>
-      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Preferences</Text>
+      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+        Preferences
+      </Text>
 
-      <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        <Text style={[styles.fieldLabel, { color: theme.textSecondary, marginBottom: Spacing.two }]}>Appearance</Text>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.fieldLabel,
+            { color: theme.textSecondary, marginBottom: Spacing.two },
+          ]}
+        >
+          Appearance
+        </Text>
         <View style={styles.segmentRow}>
           {modes.map((m) => {
             const active = mode === m.key;
@@ -360,11 +562,26 @@ function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTh
                 onPress={() => setMode(m.key)}
                 style={[
                   styles.segment,
-                  { borderColor: theme.border, backgroundColor: active ? theme.brand : "transparent" },
+                  {
+                    borderColor: theme.border,
+                    backgroundColor: active ? theme.brand : "transparent",
+                  },
                 ]}
               >
-                <Ionicons name={m.icon} size={15} color={active ? "#fff" : theme.textSecondary} />
-                <Text style={{ color: active ? "#fff" : theme.text, fontWeight: "600", fontSize: 13 }}>{m.label}</Text>
+                <Ionicons
+                  name={m.icon}
+                  size={15}
+                  color={active ? "#fff" : theme.textSecondary}
+                />
+                <Text
+                  style={{
+                    color: active ? "#fff" : theme.text,
+                    fontWeight: "600",
+                    fontSize: 13,
+                  }}
+                >
+                  {m.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -374,8 +591,16 @@ function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTh
 
         <View style={styles.toggleRow}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}>Push notifications</Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>Trip updates and alerts</Text>
+            <Text
+              style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}
+            >
+              Push notifications
+            </Text>
+            <Text
+              style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}
+            >
+              Trip updates and alerts
+            </Text>
           </View>
           <Switch
             value={pushEnabled}
@@ -392,16 +617,43 @@ function PreferencesSection({ theme, session }: { theme: ReturnType<typeof useTh
 function SupportSection({ theme }: { theme: ReturnType<typeof useTheme> }) {
   return (
     <View style={{ marginTop: Spacing.four }}>
-      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Support</Text>
-      <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border, gap: 0 }]}>
-        <Pressable onPress={() => void openStoreReview()} style={styles.linkRow}>
+      <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+        Support
+      </Text>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+            gap: 0,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={() => void openStoreReview()}
+          style={styles.linkRow}
+        >
           <Ionicons name="star-outline" size={16} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>Rate us</Text>
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>
+            Rate us
+          </Text>
         </Pressable>
-        <View style={[styles.compactDivider, { backgroundColor: theme.border }]} />
-        <Pressable onPress={() => void openWhatsAppSupport()} style={styles.linkRow}>
-          <Ionicons name="logo-whatsapp" size={16} color={theme.textSecondary} />
-          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>Help center</Text>
+        <View
+          style={[styles.compactDivider, { backgroundColor: theme.border }]}
+        />
+        <Pressable
+          onPress={() => void openWhatsAppSupport()}
+          style={styles.linkRow}
+        >
+          <Ionicons
+            name="logo-whatsapp"
+            size={16}
+            color={theme.textSecondary}
+          />
+          <Text style={{ color: theme.text, fontWeight: "600", fontSize: 14 }}>
+            Help center
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -425,7 +677,9 @@ function Field({
 }) {
   return (
     <View style={{ marginTop: Spacing.three }}>
-      <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{label}</Text>
+      <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
+        {label}
+      </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -449,9 +703,24 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
-  avatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: "rgba(255,255,255,0.6)" },
-  avatarFallback: { alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.15)" },
-  heroName: { fontSize: 19, fontWeight: "800", color: "#fff", marginTop: Spacing.three },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.6)",
+  },
+  avatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  heroName: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: Spacing.three,
+  },
   heroSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
   card: {
     marginHorizontal: Spacing.four,
@@ -463,10 +732,18 @@ const styles = StyleSheet.create({
   // curved hero header — the others sit under their own section label, and
   // inheriting this negative margin would pull the card up over that label.
   firstCard: { marginTop: -Spacing.four },
-  cardTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  cardTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   cardTitle: { fontSize: 15, fontWeight: "700" },
   editLink: { flexDirection: "row", alignItems: "center", gap: 4 },
-  editActionsRow: { flexDirection: "row", gap: Spacing.two, marginTop: Spacing.four },
+  editActionsRow: {
+    flexDirection: "row",
+    gap: Spacing.two,
+    marginTop: Spacing.four,
+  },
   cancelButton: {
     borderWidth: 1,
     borderRadius: 12,
@@ -475,7 +752,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  readOnlyRow: { paddingVertical: Spacing.three, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  readOnlyRow: {
+    paddingVertical: Spacing.three,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  walletRow: { flexDirection: "row", alignItems: "center", gap: Spacing.three },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "700",
@@ -484,9 +774,25 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.four + Spacing.one,
     marginBottom: Spacing.two,
   },
-  fieldLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 12, padding: Spacing.three, fontSize: 16 },
-  saveButton: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: Spacing.four },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: Spacing.three,
+    fontSize: 16,
+  },
+  saveButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: Spacing.four,
+  },
   saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   segmentRow: { flexDirection: "row", gap: Spacing.two },
   segment: {
@@ -500,7 +806,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.three },
-  compactDivider: { height: StyleSheet.hairlineWidth, marginVertical: Spacing.half },
+  compactDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: Spacing.half,
+  },
   toggleRow: { flexDirection: "row", alignItems: "center" },
   linkRow: {
     flexDirection: "row",

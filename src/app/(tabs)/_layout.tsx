@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
+import { TabBarBaseHeight } from "@/constants/theme";
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -33,7 +34,7 @@ export default function TabsLayout() {
           left: 0,
           right: 0,
           bottom: 0,
-          height: 64 + insets.bottom,
+          height: TabBarBaseHeight + insets.bottom,
           paddingBottom: insets.bottom,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,

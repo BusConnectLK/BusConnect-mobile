@@ -5,7 +5,8 @@
  * (search, trip detail, seat map) need no token. Writes (holds, bookings)
  * require the caller to pass the Supabase access token.
  */
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api";
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api";
 
 export class ApiError extends Error {
   constructor(
@@ -38,7 +39,10 @@ async function request<T>(
     // never reached the server — no connection, DNS failure, etc. Status 0
     // distinguishes this from a real server-returned error everywhere
     // ApiError.status is checked.
-    throw new ApiError(0, "No internet connection. Check your network and try again.");
+    throw new ApiError(
+      0,
+      "No internet connection. Check your network and try again.",
+    );
   }
 
   if (!res.ok) {
@@ -146,8 +150,19 @@ export interface TripDetail {
   bus: {
     reg_no: string;
     amenities: string[];
-    operator: { id: string; name: string; logo_url: string | null; rating: number; reliability_score: number } | null;
-    bus_type: { name: string; class: string; seat_count: number; layout_json: SeatLayout | null };
+    operator: {
+      id: string;
+      name: string;
+      logo_url: string | null;
+      rating: number;
+      reliability_score: number;
+    } | null;
+    bus_type: {
+      name: string;
+      class: string;
+      seat_count: number;
+      layout_json: SeatLayout | null;
+    };
   };
   fares: TripFare[];
   stops: TripStopTime[];
@@ -198,7 +213,8 @@ export interface MpgsCheckoutSession {
 }
 
 /** Live GPS position from the conductor's device, if it's pushing one yet. */
-export type TripStatus = "scheduled" | "boarding" | "departed" | "arrived" | "cancelled";
+export type TripStatus =
+  "scheduled" | "boarding" | "departed" | "arrived" | "cancelled";
 
 export type TripLive =
   | { ok: true; status: TripStatus; sharing: boolean; tracking: false }
@@ -236,7 +252,11 @@ export interface TripRoute {
 
 // ── Public (no token) ────────────────────────────────────────────────────────
 
-export function searchTrips(params: { from: string; to: string; date: string }) {
+export function searchTrips(params: {
+  from: string;
+  to: string;
+  date: string;
+}) {
   const qs = new URLSearchParams(params).toString();
   return request<TripSearchResult[]>(`/search?${qs}`);
 }
@@ -262,7 +282,10 @@ export function getTripRoute(id: string) {
 
 export function createHold(
   accessToken: string,
-  body: { tripId: string; seats: { seatNo: string; gender?: "male" | "female" }[] },
+  body: {
+    tripId: string;
+    seats: { seatNo: string; gender?: "male" | "female" }[];
+  },
 ) {
   return request<HoldResult>("/holds", {
     method: "POST",
@@ -312,6 +335,48 @@ export function checkoutBooking(accessToken: string, bookingId: string) {
   });
 }
 
+// ── Wallet ───────────────────────────────────────────────────────────────────
+
+export interface Wallet {
+  balance: number;
+  currency: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  type: "topup" | "payment" | "refund" | "adjustment";
+  status: "pending" | "completed" | "failed";
+  amount: number;
+  booking_id: string | null;
+  created_at: string;
+}
+
+export function getWallet(accessToken: string) {
+  return request<Wallet>("/wallet", { accessToken });
+}
+
+export function listWalletTransactions(accessToken: string) {
+  return request<WalletTransaction[]>("/wallet/transactions", { accessToken });
+}
+
+export function topupWallet(accessToken: string, amount: number) {
+  return request<MpgsCheckoutSession>("/wallet/topup", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+    accessToken,
+  });
+}
+
+export function payBookingFromWallet(accessToken: string, bookingId: string) {
+  return request<{ ok: boolean; ticket_id?: string }>(
+    `/wallet/bookings/${bookingId}/pay`,
+    {
+      method: "POST",
+      accessToken,
+    },
+  );
+}
+
 export interface MyProfile {
   id: string;
   name: string | null;
@@ -335,7 +400,10 @@ export interface UpdateMyProfileInput {
   avatarUrl?: string;
 }
 
-export function updateMyProfile(accessToken: string, input: UpdateMyProfileInput) {
+export function updateMyProfile(
+  accessToken: string,
+  input: UpdateMyProfileInput,
+) {
   return request<MyProfile>("/me/profile", {
     method: "PATCH",
     body: JSON.stringify(input),
@@ -344,7 +412,10 @@ export function updateMyProfile(accessToken: string, input: UpdateMyProfileInput
 }
 
 export function deleteMyAccount(accessToken: string) {
-  return request<{ ok: boolean }>("/me/account", { method: "DELETE", accessToken });
+  return request<{ ok: boolean }>("/me/account", {
+    method: "DELETE",
+    accessToken,
+  });
 }
 
 export type PushApp = "passenger" | "pilot";
@@ -372,19 +443,30 @@ export interface NotificationItem {
 }
 
 export function listNotifications(accessToken: string) {
-  return request<NotificationItem[]>("/notifications?app=passenger", { accessToken });
+  return request<NotificationItem[]>("/notifications?app=passenger", {
+    accessToken,
+  });
 }
 
 export function getUnreadNotificationCount(accessToken: string) {
-  return request<{ count: number }>("/notifications/unread-count?app=passenger", { accessToken });
+  return request<{ count: number }>(
+    "/notifications/unread-count?app=passenger",
+    { accessToken },
+  );
 }
 
 export function markNotificationRead(accessToken: string, id: string) {
-  return request<{ ok: true }>(`/notifications/${id}/read`, { method: "PATCH", accessToken });
+  return request<{ ok: true }>(`/notifications/${id}/read`, {
+    method: "PATCH",
+    accessToken,
+  });
 }
 
 export function markAllNotificationsRead(accessToken: string) {
-  return request<{ ok: true }>("/notifications/read-all?app=passenger", { method: "POST", accessToken });
+  return request<{ ok: true }>("/notifications/read-all?app=passenger", {
+    method: "POST",
+    accessToken,
+  });
 }
 
 export function unregisterPushToken(accessToken: string, token: string) {

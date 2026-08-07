@@ -1,13 +1,35 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
+import {
+  WebView,
+  type WebViewMessageEvent,
+  type WebViewNavigation,
+} from "react-native-webview";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/lib/auth";
-import { checkoutBooking, ApiError, type MpgsCheckoutSession } from "@/lib/api";
+import {
+  checkoutBooking,
+  getBooking,
+  getWallet,
+  payBookingFromWallet,
+  ApiError,
+  type MpgsCheckoutSession,
+  type Wallet,
+} from "@/lib/api";
 import { Spacing } from "@/constants/theme";
+
+function formatLkr(amount: number) {
+  return `LKR ${amount.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 /**
  * A minimal HTML shell that loads MPGS's hosted-checkout SDK and hands it
@@ -45,19 +67,62 @@ function checkoutHtml(checkout: MpgsCheckoutSession) {
   </body></html>`;
 }
 
+type Stage = "loading" | "choose" | "card" | "wallet-paying";
+
 export default function CheckoutScreen() {
   const theme = useTheme();
   const { session } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [stage, setStage] = useState<Stage>("loading");
+  const [amount, setAmount] = useState<number | null>(null);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const [checkout, setCheckout] = useState<MpgsCheckoutSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id || !session) return;
+    Promise.all([
+      getBooking(session.access_token, id),
+      getWallet(session.access_token),
+    ])
+      .then(([booking, w]) => {
+        setAmount(booking.amount);
+        setWallet(w);
+        setStage("choose");
+      })
+      .catch((e) =>
+        setError(
+          e instanceof ApiError ? e.message : "Could not load this booking.",
+        ),
+      );
+  }, [id, session]);
+
+  function payWithCard() {
+    if (!id || !session) return;
+    setStage("card");
     checkoutBooking(session.access_token, id)
       .then(setCheckout)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Could not start payment."));
-  }, [id, session]);
+      .catch((e) =>
+        setError(
+          e instanceof ApiError ? e.message : "Could not start payment.",
+        ),
+      );
+  }
+
+  function payWithWallet() {
+    if (!id || !session) return;
+    setStage("wallet-paying");
+    payBookingFromWallet(session.access_token, id)
+      .then(() =>
+        router.replace({ pathname: "/bookings/[id]", params: { id } }),
+      )
+      .catch((e) => {
+        setError(
+          e instanceof ApiError ? e.message : "Could not pay from wallet.",
+        );
+        setStage("choose");
+      });
+  }
 
   function onNavigate(nav: WebViewNavigation) {
     // MPGS's return_url resolves through our API to
@@ -81,7 +146,10 @@ export default function CheckoutScreen() {
   }
 
   const hero = (
-    <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.hero, { backgroundColor: theme.brand }]}
+    >
       <Pressable onPress={() => router.back()} hitSlop={8}>
         <Ionicons name="chevron-back" size={22} color="#fff" />
       </Pressable>
@@ -90,7 +158,7 @@ export default function CheckoutScreen() {
     </SafeAreaView>
   );
 
-  if (error) {
+  if (error && stage !== "choose") {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
@@ -101,17 +169,125 @@ export default function CheckoutScreen() {
     );
   }
 
-  if (!checkout) {
+  if (stage === "loading" || (stage === "card" && !checkout)) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {hero}
         <View style={styles.center}>
           <ActivityIndicator color={theme.brand} />
-          <Text style={{ color: theme.textSecondary, marginTop: 12 }}>Redirecting to secure checkout…</Text>
+          <Text style={{ color: theme.textSecondary, marginTop: 12 }}>
+            {stage === "card" ? "Redirecting to secure checkout…" : "Loading…"}
+          </Text>
         </View>
       </View>
     );
   }
+
+  if (stage === "wallet-paying") {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.brand} />
+          <Text style={{ color: theme.textSecondary, marginTop: 12 }}>
+            Paying from your wallet…
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (stage === "choose") {
+    const insufficientWallet =
+      wallet !== null && amount !== null && wallet.balance < amount;
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background }}>
+        {hero}
+        <View style={styles.chooseContainer}>
+          <Text style={[styles.amountLabel, { color: theme.textSecondary }]}>
+            Amount due
+          </Text>
+          <Text style={[styles.amountValue, { color: theme.text }]}>
+            {amount !== null ? formatLkr(amount) : "—"}
+          </Text>
+
+          {error && (
+            <Text
+              style={{ color: "#dc2626", fontSize: 13, marginTop: Spacing.two }}
+            >
+              {error}
+            </Text>
+          )}
+
+          <Pressable
+            onPress={payWithWallet}
+            disabled={insufficientWallet}
+            style={[
+              styles.methodButton,
+              {
+                borderColor: theme.border,
+                opacity: insufficientWallet ? 0.5 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="wallet-outline" size={20} color={theme.brand} />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}
+              >
+                Pay from wallet
+              </Text>
+              <Text
+                style={{
+                  color: theme.textSecondary,
+                  fontSize: 12,
+                  marginTop: 2,
+                }}
+              >
+                {wallet ? `Balance: ${formatLkr(wallet.balance)}` : "—"}
+                {insufficientWallet ? " · Insufficient balance" : ""}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={payWithCard}
+            style={[styles.methodButton, { borderColor: theme.border }]}
+          >
+            <Ionicons name="card-outline" size={20} color={theme.brand} />
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}
+              >
+                Pay with card
+              </Text>
+              <Text
+                style={{
+                  color: theme.textSecondary,
+                  fontSize: 12,
+                  marginTop: 2,
+                }}
+              >
+                Secure checkout via MPGS
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (!checkout) return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -144,4 +320,22 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.two,
   },
   heroTitle: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  chooseContainer: { flex: 1, padding: Spacing.four },
+  amountLabel: { fontSize: 13, textAlign: "center" },
+  amountValue: {
+    fontSize: 32,
+    fontWeight: "800",
+    textAlign: "center",
+    marginTop: 4,
+    marginBottom: Spacing.five,
+  },
+  methodButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.three,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: Spacing.four,
+    marginBottom: Spacing.three,
+  },
 });

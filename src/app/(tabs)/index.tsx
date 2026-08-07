@@ -10,7 +10,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -18,9 +21,14 @@ import { useTheme } from "@/hooks/use-theme";
 import { useThemeMode } from "@/lib/theme-mode-context";
 import { useAuth } from "@/lib/auth";
 import { listLocations, type Location } from "@/lib/locations";
-import { listPopularRoutes, formatDuration, type PopularRoute } from "@/lib/popular-routes";
+import {
+  listPopularRoutes,
+  formatDuration,
+  type PopularRoute,
+} from "@/lib/popular-routes";
+import { getWallet, type Wallet } from "@/lib/api";
 import { NotificationBell } from "@/components/notification-bell";
-import { Spacing, BottomTabInset } from "@/constants/theme";
+import { Spacing, BottomTabInset, TabBarBaseHeight } from "@/constants/theme";
 
 const ROUTE_CARD_WIDTH = 220;
 
@@ -46,19 +54,30 @@ function colomboTodayIso() {
 /** "tomorrow" / "in 2 days" / "Fri, 2 Aug" for a yyyy-mm-dd relative to today. */
 function relativeDateLabel(dateIso: string, todayDateIso: string) {
   const days = Math.round(
-    (new Date(`${dateIso}T00:00:00`).getTime() - new Date(`${todayDateIso}T00:00:00`).getTime()) / 86400000,
+    (new Date(`${dateIso}T00:00:00`).getTime() -
+      new Date(`${todayDateIso}T00:00:00`).getTime()) /
+      86400000,
   );
   if (days === 1) return "tomorrow";
   if (days > 1 && days <= 6) return `in ${days} days`;
-  return new Date(`${dateIso}T00:00:00`).toLocaleDateString("en-LK", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(`${dateIso}T00:00:00`).toLocaleDateString("en-LK", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString("en-LK", { weekday: "short", day: "numeric", month: "short" });
+  return d.toLocaleDateString("en-LK", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
 
 export default function SearchScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { resolvedScheme } = useThemeMode();
   const { session } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -68,9 +87,14 @@ export default function SearchScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [picking, setPicking] = useState<"from" | "to" | null>(null);
   const [loading, setLoading] = useState(true);
-  const [popularRoutes, setPopularRoutes] = useState<PopularRoute[] | null>(null);
+  const [popularRoutes, setPopularRoutes] = useState<PopularRoute[] | null>(
+    null,
+  );
+  const [wallet, setWallet] = useState<Wallet | null>(null);
 
-  const firstName = (session?.user.user_metadata?.full_name as string | undefined)?.split(" ")[0];
+  const firstName = (
+    session?.user.user_metadata?.full_name as string | undefined
+  )?.split(" ")[0];
 
   useEffect(() => {
     void listLocations().then((data) => {
@@ -81,6 +105,18 @@ export default function SearchScreen() {
     });
     void listPopularRoutes(6).then(setPopularRoutes);
   }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setWallet(null);
+      return;
+    }
+    void getWallet(session.access_token)
+      .then(setWallet)
+      .catch(() => {
+        // Non-critical here — the wallet screen itself surfaces real errors.
+      });
+  }, [session]);
 
   function swap() {
     setFrom(to);
@@ -104,44 +140,95 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <SafeAreaView edges={["top"]} style={[styles.hero, { backgroundColor: theme.brand }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <SafeAreaView
+          edges={["top"]}
+          style={[styles.hero, { backgroundColor: theme.brand }]}
+        >
           <View style={styles.heroTopRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.greeting}>{firstName ? `Hello, ${firstName}` : "Every Journey, Connected."}</Text>
-              <Text style={styles.tagline}>Search live seats, book securely, board with a QR ticket.</Text>
+              <Text style={styles.greeting}>
+                {firstName
+                  ? `Hello, ${firstName}`
+                  : "Every Journey, Connected."}
+              </Text>
+              <Text style={styles.tagline}>
+                Search live seats, book securely, board with a QR ticket.
+              </Text>
             </View>
             <NotificationBell />
           </View>
         </SafeAreaView>
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: Spacing.six }} color={theme.brand} />
+          <ActivityIndicator
+            style={{ marginTop: Spacing.six }}
+            color={theme.brand}
+          />
         ) : (
           <View
             style={[
               styles.card,
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.border,
+              },
             ]}
           >
             <View style={styles.routeRow}>
               <View style={styles.dotsColumn}>
                 <View style={[styles.dot, { backgroundColor: theme.brand }]} />
-                <View style={[styles.dotLine, { backgroundColor: theme.border }]} />
-                <View style={[styles.dot, styles.dotOutline, { borderColor: theme.brand }]} />
+                <View
+                  style={[styles.dotLine, { backgroundColor: theme.border }]}
+                />
+                <View
+                  style={[
+                    styles.dot,
+                    styles.dotOutline,
+                    { borderColor: theme.brand },
+                  ]}
+                />
               </View>
 
               <View style={styles.routeFields}>
-                <Pressable onPress={() => setPicking("from")} style={styles.routeField}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>From</Text>
-                  <Text style={[styles.fieldValue, { color: theme.text }]} numberOfLines={1}>
+                <Pressable
+                  onPress={() => setPicking("from")}
+                  style={styles.routeField}
+                >
+                  <Text
+                    style={[styles.fieldLabel, { color: theme.textSecondary }]}
+                  >
+                    From
+                  </Text>
+                  <Text
+                    style={[styles.fieldValue, { color: theme.text }]}
+                    numberOfLines={1}
+                  >
                     {from?.name_en ?? "Select"}
                   </Text>
                 </Pressable>
-                <View style={[styles.routeDivider, { backgroundColor: theme.border }]} />
-                <Pressable onPress={() => setPicking("to")} style={styles.routeField}>
-                  <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>To</Text>
-                  <Text style={[styles.fieldValue, { color: theme.text }]} numberOfLines={1}>
+                <View
+                  style={[
+                    styles.routeDivider,
+                    { backgroundColor: theme.border },
+                  ]}
+                />
+                <Pressable
+                  onPress={() => setPicking("to")}
+                  style={styles.routeField}
+                >
+                  <Text
+                    style={[styles.fieldLabel, { color: theme.textSecondary }]}
+                  >
+                    To
+                  </Text>
+                  <Text
+                    style={[styles.fieldValue, { color: theme.text }]}
+                    numberOfLines={1}
+                  >
                     {to?.name_en ?? "Select"}
                   </Text>
                 </Pressable>
@@ -150,7 +237,10 @@ export default function SearchScreen() {
               <Pressable
                 onPress={swap}
                 hitSlop={10}
-                style={[styles.swapButton, { backgroundColor: theme.backgroundSelected }]}
+                style={[
+                  styles.swapButton,
+                  { backgroundColor: theme.backgroundSelected },
+                ]}
               >
                 <Ionicons name="swap-vertical" size={18} color={theme.brand} />
               </Pressable>
@@ -160,17 +250,33 @@ export default function SearchScreen() {
               onPress={() => setShowDatePicker(true)}
               style={[styles.dateField, { borderColor: theme.border }]}
             >
-              <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color={theme.textSecondary}
+              />
               <View style={{ marginLeft: Spacing.two }}>
-                <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Date</Text>
-                <Text style={[styles.fieldValue, { color: theme.text }]}>{formatDate(date)}</Text>
+                <Text
+                  style={[styles.fieldLabel, { color: theme.textSecondary }]}
+                >
+                  Date
+                </Text>
+                <Text style={[styles.fieldValue, { color: theme.text }]}>
+                  {formatDate(date)}
+                </Text>
               </View>
             </Pressable>
 
             <Pressable
               onPress={search}
               disabled={!from || !to}
-              style={[styles.searchButton, { backgroundColor: theme.brand, opacity: !from || !to ? 0.6 : 1 }]}
+              style={[
+                styles.searchButton,
+                {
+                  backgroundColor: theme.brand,
+                  opacity: !from || !to ? 0.6 : 1,
+                },
+              ]}
             >
               <Ionicons name="search" size={17} color="#fff" />
               <Text style={styles.searchButtonText}>Search buses</Text>
@@ -178,9 +284,50 @@ export default function SearchScreen() {
           </View>
         )}
 
+        {session && (
+          <Pressable
+            onPress={() => router.push("/wallet")}
+            style={[
+              styles.walletCard,
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <View style={[styles.walletIcon, { backgroundColor: theme.brand }]}>
+              <Ionicons name="wallet-outline" size={18} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                Wallet balance
+              </Text>
+              <Text
+                style={{
+                  color: theme.text,
+                  fontWeight: "800",
+                  fontSize: 17,
+                  marginTop: 2,
+                }}
+              >
+                {wallet
+                  ? `LKR ${wallet.balance.toLocaleString("en-LK", { minimumFractionDigits: 2 })}`
+                  : "—"}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.textSecondary}
+            />
+          </Pressable>
+        )}
+
         {popularRoutes === null ? null : popularRoutes.length > 0 ? (
           <View style={styles.popularSection}>
-            <Text style={[styles.popularTitle, { color: theme.text }]}>Popular routes</Text>
+            <Text style={[styles.popularTitle, { color: theme.text }]}>
+              Popular routes
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -194,35 +341,89 @@ export default function SearchScreen() {
                   <Pressable
                     key={`${r.originId}-${r.destId}`}
                     onPress={() => searchRoute(r)}
-                    style={[styles.routeCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+                    style={[
+                      styles.routeCard,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: theme.border,
+                      },
+                    ]}
                   >
                     <View>
                       {r.imageUrl ? (
-                        <Image source={{ uri: r.imageUrl }} style={styles.routeCardImage} />
+                        <Image
+                          source={{ uri: r.imageUrl }}
+                          style={styles.routeCardImage}
+                        />
                       ) : (
-                        <View style={[styles.routeCardImage, styles.routeCardImageFallback, { backgroundColor: theme.brand }]}>
-                          <Ionicons name="bus" size={22} color="rgba(255,255,255,0.5)" />
+                        <View
+                          style={[
+                            styles.routeCardImage,
+                            styles.routeCardImageFallback,
+                            { backgroundColor: theme.brand },
+                          ]}
+                        >
+                          <Ionicons
+                            name="bus"
+                            size={22}
+                            color="rgba(255,255,255,0.5)"
+                          />
                         </View>
                       )}
                       <View style={styles.routeBadge}>
-                        <Text style={[styles.routeBadgeTop, { backgroundColor: theme.brand }]}>TODAY</Text>
-                        <View style={[styles.routeBadgeBottom, { backgroundColor: theme.backgroundElement }]}>
-                          <Text style={[styles.routeBadgeCount, { color: theme.text }]}>{r.todayCount}</Text>
+                        <Text
+                          style={[
+                            styles.routeBadgeTop,
+                            { backgroundColor: theme.brand },
+                          ]}
+                        >
+                          TODAY
+                        </Text>
+                        <View
+                          style={[
+                            styles.routeBadgeBottom,
+                            { backgroundColor: theme.backgroundElement },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.routeBadgeCount,
+                              { color: theme.text },
+                            ]}
+                          >
+                            {r.todayCount}
+                          </Text>
                         </View>
                       </View>
                     </View>
 
                     <View style={styles.routeCardBody}>
                       <View style={styles.routeCardHeading}>
-                        <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
+                        <Text
+                          style={[styles.routeCardText, { color: theme.text }]}
+                          numberOfLines={1}
+                        >
                           {r.originName}
                         </Text>
-                        <Ionicons name="arrow-forward" size={13} color={theme.textSecondary} />
-                        <Text style={[styles.routeCardText, { color: theme.text }]} numberOfLines={1}>
+                        <Ionicons
+                          name="arrow-forward"
+                          size={13}
+                          color={theme.textSecondary}
+                        />
+                        <Text
+                          style={[styles.routeCardText, { color: theme.text }]}
+                          numberOfLines={1}
+                        >
                           {r.destName}
                         </Text>
                       </View>
-                      <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 3 }}>
+                      <Text
+                        style={{
+                          color: theme.textSecondary,
+                          fontSize: 12,
+                          marginTop: 3,
+                        }}
+                      >
                         {r.todayCount > 0
                           ? `${r.todayCount} ${r.todayCount === 1 ? "trip" : "trips"} today${dur ? ` · ${dur}` : ""}`
                           : r.nextDateIso
@@ -230,22 +431,59 @@ export default function SearchScreen() {
                             : "No buses scheduled yet"}
                       </Text>
 
-                      <View style={[styles.routeDashedDivider, { borderColor: theme.border }]} />
+                      <View
+                        style={[
+                          styles.routeDashedDivider,
+                          { borderColor: theme.border },
+                        ]}
+                      />
 
                       <View style={styles.routeFooterRow}>
                         {r.minFare != null ? (
                           <View>
-                            <Text style={[styles.routeFareLabel, { color: theme.textSecondary }]}>LKR</Text>
-                            <Text style={[styles.routeFareValue, { color: theme.brand }]}>
-                              {r.minFare.toLocaleString("en-LK", { maximumFractionDigits: 0 })}
+                            <Text
+                              style={[
+                                styles.routeFareLabel,
+                                { color: theme.textSecondary },
+                              ]}
+                            >
+                              LKR
                             </Text>
-                            <Text style={[styles.routeFareLabel, { color: theme.textSecondary }]}>onwards</Text>
+                            <Text
+                              style={[
+                                styles.routeFareValue,
+                                { color: theme.brand },
+                              ]}
+                            >
+                              {r.minFare.toLocaleString("en-LK", {
+                                maximumFractionDigits: 0,
+                              })}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.routeFareLabel,
+                                { color: theme.textSecondary },
+                              ]}
+                            >
+                              onwards
+                            </Text>
                           </View>
                         ) : (
-                          <Text style={{ color: theme.textSecondary, fontSize: 11 }}>No buses yet</Text>
+                          <Text
+                            style={{ color: theme.textSecondary, fontSize: 11 }}
+                          >
+                            No buses yet
+                          </Text>
                         )}
-                        <View style={[styles.routeSearchButton, { backgroundColor: theme.brand }]}>
-                          <Text style={styles.routeSearchButtonText}>Search</Text>
+                        <View
+                          style={[
+                            styles.routeSearchButton,
+                            { backgroundColor: theme.brand },
+                          ]}
+                        >
+                          <Text style={styles.routeSearchButtonText}>
+                            Search
+                          </Text>
                         </View>
                       </View>
                     </View>
@@ -271,11 +509,30 @@ export default function SearchScreen() {
 
       {showDatePicker && Platform.OS === "ios" && (
         <View style={StyleSheet.absoluteFill}>
-          <Pressable style={[StyleSheet.absoluteFill, styles.overlay]} onPress={() => setShowDatePicker(false)} />
-          <View style={[styles.datePickerSheet, { backgroundColor: theme.backgroundElement }]}>
+          <Pressable
+            style={[StyleSheet.absoluteFill, styles.overlay]}
+            onPress={() => setShowDatePicker(false)}
+          />
+          <View
+            style={[
+              styles.datePickerSheet,
+              {
+                backgroundColor: theme.backgroundElement,
+                bottom: TabBarBaseHeight + insets.bottom,
+              },
+            ]}
+          >
             <View style={styles.datePickerHeader}>
               <Pressable onPress={() => setShowDatePicker(false)} hitSlop={8}>
-                <Text style={{ color: theme.brand, fontWeight: "700", fontSize: 15 }}>Done</Text>
+                <Text
+                  style={{
+                    color: theme.brand,
+                    fontWeight: "700",
+                    fontSize: 15,
+                  }}
+                >
+                  Done
+                </Text>
               </Pressable>
             </View>
             <DateTimePicker
@@ -322,14 +579,32 @@ function LocationPicker({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = locations.filter((l) => l.name_en.toLowerCase().includes(query.toLowerCase()));
+  const filtered = locations.filter((l) =>
+    l.name_en.toLowerCase().includes(query.toLowerCase()),
+  );
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Pressable style={[StyleSheet.absoluteFill, styles.overlay]} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}>
+      <Pressable
+        style={[StyleSheet.absoluteFill, styles.overlay]}
+        onPress={onClose}
+      />
+      <View
+        style={[
+          styles.sheet,
+          {
+            backgroundColor: theme.backgroundElement,
+            bottom: TabBarBaseHeight + insets.bottom,
+          },
+        ]}
+      >
         <View style={[styles.searchInputWrap, { borderColor: theme.border }]}>
-          <Ionicons name="search-outline" size={17} color={theme.textSecondary} />
+          <Ionicons
+            name="search-outline"
+            size={17}
+            color={theme.textSecondary}
+          />
           <TextInput
             autoFocus
             value={query}
@@ -341,9 +616,25 @@ function LocationPicker({
         </View>
         <ScrollView>
           {filtered.map((loc) => (
-            <Pressable key={loc.id} onPress={() => onSelect(loc)} style={styles.locationRow}>
-              <Ionicons name="location-outline" size={16} color={theme.textSecondary} />
-              <Text style={{ color: theme.text, fontSize: 16, marginLeft: Spacing.two }}>{loc.name_en}</Text>
+            <Pressable
+              key={loc.id}
+              onPress={() => onSelect(loc)}
+              style={styles.locationRow}
+            >
+              <Ionicons
+                name="location-outline"
+                size={16}
+                color={theme.textSecondary}
+              />
+              <Text
+                style={{
+                  color: theme.text,
+                  fontSize: 16,
+                  marginLeft: Spacing.two,
+                }}
+              >
+                {loc.name_en}
+              </Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -363,8 +654,20 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 28,
   },
   heroTopRow: { flexDirection: "row", alignItems: "flex-start" },
-  greeting: { fontSize: 24, fontWeight: "800", color: "#fff", letterSpacing: -0.3, maxWidth: 240 },
-  tagline: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: Spacing.one, maxWidth: 260, lineHeight: 18 },
+  greeting: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.3,
+    maxWidth: 240,
+  },
+  tagline: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: Spacing.one,
+    maxWidth: 260,
+    lineHeight: 18,
+  },
   card: {
     marginHorizontal: Spacing.four,
     marginTop: -Spacing.six,
@@ -372,6 +675,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: Spacing.four,
     gap: Spacing.three,
+  },
+  walletCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.three,
+    marginHorizontal: Spacing.four,
+    marginTop: Spacing.four,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: Spacing.four,
+  },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   routeRow: { flexDirection: "row", alignItems: "stretch" },
   dotsColumn: { width: 16, alignItems: "center", paddingVertical: 6 },
@@ -381,7 +701,12 @@ const styles = StyleSheet.create({
   routeFields: { flex: 1, marginLeft: Spacing.two },
   routeField: { paddingVertical: Spacing.two },
   routeDivider: { height: StyleSheet.hairlineWidth },
-  fieldLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   fieldValue: { fontSize: 16, fontWeight: "700", marginTop: 3 },
   swapButton: {
     width: 36,
@@ -409,7 +734,12 @@ const styles = StyleSheet.create({
   },
   searchButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   popularSection: { marginTop: Spacing.five, gap: Spacing.two },
-  popularTitle: { fontSize: 18, fontWeight: "800", marginBottom: Spacing.one, paddingHorizontal: Spacing.four },
+  popularTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: Spacing.one,
+    paddingHorizontal: Spacing.four,
+  },
   popularScrollContent: { paddingHorizontal: Spacing.four, gap: Spacing.three },
   routeCard: {
     width: ROUTE_CARD_WIDTH,
@@ -445,11 +775,23 @@ const styles = StyleSheet.create({
   routeCardBody: { padding: Spacing.three },
   routeCardHeading: { flexDirection: "row", alignItems: "center", gap: 6 },
   routeCardText: { fontSize: 15, fontWeight: "700", flexShrink: 1 },
-  routeDashedDivider: { marginVertical: Spacing.three, borderTopWidth: 1, borderStyle: "dashed" },
-  routeFooterRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  routeDashedDivider: {
+    marginVertical: Spacing.three,
+    borderTopWidth: 1,
+    borderStyle: "dashed",
+  },
+  routeFooterRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+  },
   routeFareLabel: { fontSize: 10, fontWeight: "600" },
   routeFareValue: { fontSize: 18, fontWeight: "800", marginTop: 1 },
-  routeSearchButton: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  routeSearchButton: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   routeSearchButtonText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   overlay: { backgroundColor: "rgba(0,0,0,0.4)" },
   datePickerSheet: {

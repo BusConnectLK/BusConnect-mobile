@@ -70,4 +70,6 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 120, android: 110 }) ?? 100;
+/** Base tab bar height before the device's bottom safe-area inset is added; must match `_layout.tsx`'s `tabBarStyle.height`. */
+export const TabBarBaseHeight = 64;
 export const MaxContentWidth = 800;
