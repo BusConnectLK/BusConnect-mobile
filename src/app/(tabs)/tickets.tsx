@@ -152,7 +152,10 @@ export default function TicketsScreen() {
           </Text>
           <Pressable
             onPress={() => router.push("/")}
-            style={[styles.primaryButton, { backgroundColor: theme.brand }]}
+            style={[
+              styles.primaryButton,
+              { flex: 0, backgroundColor: theme.brand },
+            ]}
           >
             <Text style={styles.primaryButtonText}>Search buses</Text>
           </Pressable>
