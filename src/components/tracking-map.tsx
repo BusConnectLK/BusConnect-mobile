@@ -7,6 +7,7 @@ import MapView, {
   type Region,
 } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Path, Rect } from "react-native-svg";
 import type { TripRoute } from "@/lib/api";
 import { MUTED_ANDROID_MAP_STYLE } from "@/constants/map-style";
 
@@ -18,6 +19,7 @@ export interface BusPosition {
 const BRAND = "#004aad";
 const ROUTE_UPCOMING = "#a9c2e8";
 const YOU_BLUE = "#1a73e8";
+const PIN_END = "#dc2626";
 
 type LatLng = { latitude: number; longitude: number };
 
@@ -111,6 +113,32 @@ function nearestVertexIndex(point: LatLng, coords: LatLng[]): number {
     }
   }
   return best;
+}
+
+/**
+ * Top-down vehicle silhouette (nose pointing up/north) for the live bus
+ * marker — Uber-style, rotates in place to its GPS heading rather than
+ * sitting inside a static circular badge.
+ */
+function BusVehicleIcon() {
+  return (
+    <Svg width={28} height={44} viewBox="0 0 28 44">
+      <Rect x={2} y={2} width={24} height={40} rx={9} fill={BRAND} stroke="#fff" strokeWidth={2} />
+      <Path d="M14 5 L20 14 H8 Z" fill="#fff" opacity={0.9} />
+      <Rect x={6} y={17} width={16} height={13} rx={2.5} fill="#fff" opacity={0.22} />
+      <Rect x={6} y={32} width={16} height={5} rx={2} fill="#fff" opacity={0.22} />
+    </Svg>
+  );
+}
+
+/** Teardrop map-pin marker for a stop (start/end/boarding), Google-Maps-style. */
+function StopPin({ color }: { color: string }) {
+  return (
+    <View style={styles.pinWrap}>
+      <Ionicons name="location" size={32} color={color} />
+      <View style={styles.pinHole} />
+    </View>
+  );
 }
 
 /**
@@ -315,21 +343,29 @@ export function TrackingMap({
           />
         )}
 
-        {otherStops.map((s) => (
-          <Marker
-            key={s.route_stop_id}
-            coordinate={{ latitude: s.lat, longitude: s.lng }}
-            anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
-          >
-            <View
-              style={[
-                styles.stopDot,
-                (s.is_origin || s.is_dest) && styles.stopDotEndpoint,
-              ]}
-            />
-          </Marker>
-        ))}
+        {otherStops.map((s) =>
+          s.is_origin || s.is_dest ? (
+            <Marker
+              key={s.route_stop_id}
+              coordinate={{ latitude: s.lat, longitude: s.lng }}
+              anchor={{ x: 0.5, y: 1 }}
+              tracksViewChanges={false}
+              title={s.is_origin ? "Start" : "End"}
+              description={s.name}
+            >
+              <StopPin color={s.is_origin ? BRAND : PIN_END} />
+            </Marker>
+          ) : (
+            <Marker
+              key={s.route_stop_id}
+              coordinate={{ latitude: s.lat, longitude: s.lng }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+            >
+              <View style={styles.stopDot} />
+            </Marker>
+          ),
+        )}
 
         {boardingStop && (
           <Marker
@@ -342,9 +378,7 @@ export function TrackingMap({
             title="Your stop"
             description={boardingStop.name}
           >
-            <View style={styles.youPin}>
-              <Ionicons name="person" size={12} color="#fff" />
-            </View>
+            <StopPin color={BRAND} />
           </Marker>
         )}
 
@@ -353,19 +387,15 @@ export function TrackingMap({
             coordinate={busCoord as unknown as LatLng}
             anchor={{ x: 0.5, y: 0.5 }}
           >
-            <View style={styles.busPuckRing}>
+            <View style={styles.busWrap}>
+              <View style={styles.busShadow} />
               <Animated.View
                 style={[
-                  styles.busPuck,
+                  styles.busVehicle,
                   { transform: [{ rotate: headingRotate }] },
                 ]}
               >
-                <Ionicons
-                  name="bus"
-                  size={16}
-                  color="#fff"
-                  style={styles.busPuckIcon}
-                />
+                <BusVehicleIcon />
               </Animated.View>
             </View>
           </Marker.Animated>
@@ -427,44 +457,50 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: BRAND,
   },
-  stopDotEndpoint: { width: 13, height: 13, borderRadius: 7 },
-  youPin: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: BRAND,
-    borderWidth: 2,
-    borderColor: "#fff",
+  pinWrap: {
+    width: 32,
+    height: 32,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
   },
-  busPuckRing: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: BRAND,
-    borderWidth: 3,
-    borderColor: "#fff",
+  pinHole: {
+    position: "absolute",
+    top: 7,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#fff",
+  },
+  busWrap: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Static ellipse grounding the vehicle to the map, independent of its
+  // rotation — mirrors the drop-shadow Uber/Google Maps put under a live car.
+  busShadow: {
+    position: "absolute",
+    bottom: 6,
+    width: 22,
+    height: 8,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.28)",
+  },
+  busVehicle: {
+    width: 28,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
     shadowOffset: { width: 0, height: 2 },
   },
-  // Rotates independently of the static ring/shadow above so the heading
-  // arrow turns without visibly spinning the white border or drop shadow.
-  busPuck: {
-    width: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  busPuckIcon: { marginLeft: 1 },
   controls: {
     position: "absolute",
     right: 16,
