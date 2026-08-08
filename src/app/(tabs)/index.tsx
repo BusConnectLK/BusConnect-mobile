@@ -31,6 +31,9 @@ import { NotificationBell } from "@/components/notification-bell";
 import { Spacing, BottomTabInset, TabBarBaseHeight } from "@/constants/theme";
 
 const ROUTE_CARD_WIDTH = 220;
+// Must match the tab bar's own borderTopLeftRadius/borderTopRightRadius in
+// (tabs)/_layout.tsx — see the comment where this is used below.
+const TAB_BAR_CORNER_RADIUS = 24;
 
 // Date-only string in the device's local calendar day — NOT toISOString(),
 // which converts to UTC first and lands on the wrong day for anyone east of
@@ -520,7 +523,9 @@ export default function SearchScreen() {
               styles.datePickerSheet,
               {
                 backgroundColor: theme.backgroundElement,
-                bottom: TabBarBaseHeight + insets.bottom,
+                // See the matching comment on styles.sheet's override below.
+                bottom:
+                  TabBarBaseHeight + insets.bottom - TAB_BAR_CORNER_RADIUS,
               },
             ]}
           >
@@ -557,6 +562,7 @@ export default function SearchScreen() {
         <LocationPicker
           locations={locations}
           theme={theme}
+          insets={insets}
           onSelect={(loc) => {
             if (picking === "from") setFrom(loc);
             else setTo(loc);
@@ -572,11 +578,13 @@ export default function SearchScreen() {
 function LocationPicker({
   locations,
   theme,
+  insets,
   onSelect,
   onClose,
 }: {
   locations: Location[];
   theme: ReturnType<typeof useTheme>;
+  insets: ReturnType<typeof useSafeAreaInsets>;
   onSelect: (loc: Location) => void;
   onClose: () => void;
 }) {
@@ -584,7 +592,6 @@ function LocationPicker({
   const filtered = locations.filter((l) =>
     l.name_en.toLowerCase().includes(query.toLowerCase()),
   );
-  const insets = useSafeAreaInsets();
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -597,7 +604,13 @@ function LocationPicker({
           styles.sheet,
           {
             backgroundColor: theme.backgroundElement,
-            bottom: TabBarBaseHeight + insets.bottom,
+            // The tab bar's own top corners are rounded (see _layout.tsx),
+            // so sitting exactly flush against its top edge leaves small
+            // dark notches where those corners curve away from this sheet's
+            // square bottom corners. Tucking a few points behind the tab
+            // bar (it renders on top, elevation 8) hides that without any
+            // visible overlap.
+            bottom: TabBarBaseHeight + insets.bottom - TAB_BAR_CORNER_RADIUS,
           },
         ]}
       >
