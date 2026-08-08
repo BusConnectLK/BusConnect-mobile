@@ -26,6 +26,7 @@ export interface MyBooking {
   regNo: string | null;
   qrSignature: string | null;
   ticketStatus: string | null;
+  locationSharing: boolean;
 }
 
 interface BookingRow {
@@ -39,6 +40,7 @@ interface BookingRow {
   trip: {
     depart_at: string;
     status: string;
+    location_sharing: boolean | null;
     route: { name: string } | null;
     bus: {
       reg_no: string;
@@ -57,7 +59,7 @@ export async function listMyBookings(): Promise<MyBooking[]> {
     .from("bookings")
     .select(
       `id, trip_id, from_stop_id, seats, amount, status, created_at,
-       trip:trips ( depart_at, status,
+       trip:trips ( depart_at, status, location_sharing,
          route:routes ( name ),
          bus:buses ( reg_no, bus_type:bus_types ( name, class ),
            operator:operators ( name, logo_url ) ) ),
@@ -99,8 +101,10 @@ export async function listMyBookings(): Promise<MyBooking[]> {
       busType: b.trip?.bus?.bus_type?.name ?? null,
       busClass: b.trip?.bus?.bus_type?.class ?? null,
       regNo: b.trip?.bus?.reg_no ?? null,
-      qrSignature: b.status === "confirmed" ? (ticket?.qr_signature ?? null) : null,
+      qrSignature:
+        b.status === "confirmed" ? (ticket?.qr_signature ?? null) : null,
       ticketStatus: ticket?.status ?? null,
+      locationSharing: b.trip?.location_sharing ?? false,
     };
   });
 }

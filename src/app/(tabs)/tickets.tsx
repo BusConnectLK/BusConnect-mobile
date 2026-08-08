@@ -358,37 +358,42 @@ function TicketCard({
                   {open ? "Hide QR" : "Show QR ticket"}
                 </Text>
               </Pressable>
-              {b.tripStatus !== "arrived" && b.tripStatus !== "cancelled" && (
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: "/track/[id]",
-                      params: {
-                        id: b.tripId,
-                        stopId: b.fromStopId,
-                        routeName: b.routeName ?? "",
-                        operatorName: b.operatorName,
-                      },
-                    })
-                  }
-                  style={[styles.secondaryButton, { borderColor: theme.brand }]}
-                >
-                  <Ionicons
-                    name="navigate-outline"
-                    size={14}
-                    color={theme.brand}
-                  />
-                  <Text
-                    style={{
-                      color: theme.brand,
-                      fontWeight: "700",
-                      fontSize: 13,
-                    }}
+              {b.tripStatus !== "arrived" &&
+                b.tripStatus !== "cancelled" &&
+                b.locationSharing && (
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: "/track/[id]",
+                        params: {
+                          id: b.tripId,
+                          stopId: b.fromStopId,
+                          routeName: b.routeName ?? "",
+                          operatorName: b.operatorName,
+                        },
+                      })
+                    }
+                    style={[
+                      styles.secondaryButton,
+                      { borderColor: theme.brand },
+                    ]}
                   >
-                    Track bus
-                  </Text>
-                </Pressable>
-              )}
+                    <Ionicons
+                      name="navigate-outline"
+                      size={14}
+                      color={theme.brand}
+                    />
+                    <Text
+                      style={{
+                        color: theme.brand,
+                        fontWeight: "700",
+                        fontSize: 13,
+                      }}
+                    >
+                      Track bus
+                    </Text>
+                  </Pressable>
+                )}
             </View>
           ) : (
             <View style={styles.actionRow}>
