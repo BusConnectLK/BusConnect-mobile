@@ -84,6 +84,7 @@ export interface TripSearchResult {
 export interface CrewMember {
   name: string;
   photoUrl: string | null;
+  phone: string | null;
 }
 
 export interface TripCrew {

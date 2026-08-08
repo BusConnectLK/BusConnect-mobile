@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { useLocalSearchParams, router } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -30,12 +32,11 @@ import { TrackingMap, type BusPosition } from "@/components/tracking-map";
 import { Banner } from "@/components/banner";
 import { Spacing } from "@/constants/theme";
 
-const STALE_MS = 35_000; // no fresh point for this long → "reconnecting"
+const STALE_MS = 35_000; // no fresh GPS point for this long → treated as "not connected"
 const POLL_MS = 20_000; // safety net behind realtime
 const CREW_REFRESH_MS = 4 * 60 * 1000; // crew photo URLs are signed for 300s
 const NOTIFY_ETA_MIN = 3; // fire the "almost here" alert at this ETA or below
 
-type SheetTone = "live" | "paused" | "stale" | "idle";
 type Theme = ReturnType<typeof useTheme>;
 
 export default function TrackScreen() {
@@ -55,7 +56,38 @@ export default function TrackScreen() {
   const [crew, setCrew] = useState<TripCrew | null>(null);
   const [notifyNear, setNotifyNear] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [passengerPosition, setPassengerPosition] =
+    useState<BusPosition | null>(null);
   const notifiedRef = useRef(false);
+
+  // The passenger's own position, shown as a second marker alongside the
+  // bus — foreground-only (no background permission needed; this screen is
+  // only visible while the app is open). Silently does nothing if denied,
+  // same as any other "nice to have" map layer.
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
+    void (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (cancelled || status !== "granted") return;
+      sub = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 10_000,
+          distanceInterval: 20,
+        },
+        (loc) =>
+          setPassengerPosition({
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude,
+          }),
+      );
+    })();
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
+  }, []);
 
   // Route line + stops — fetched once, static.
   useEffect(() => {
@@ -192,7 +224,7 @@ export default function TrackScreen() {
   // subsequent live update while still under the threshold.
   useEffect(() => {
     if (!notifyNear || notifiedRef.current) return;
-    if (sheet.tone !== "live" || sheet.etaMinutes == null) return;
+    if (!sheet.connected || sheet.etaMinutes == null) return;
     if (sheet.etaMinutes > NOTIFY_ETA_MIN) return;
     notifiedRef.current = true;
     void Notifications.scheduleNotificationAsync({
@@ -204,7 +236,7 @@ export default function TrackScreen() {
       },
       trigger: null,
     });
-  }, [notifyNear, sheet.tone, sheet.etaMinutes, boardingName]);
+  }, [notifyNear, sheet.connected, sheet.etaMinutes, boardingName]);
 
   if (error && !route) {
     return (
@@ -236,6 +268,7 @@ export default function TrackScreen() {
         route={route}
         boardingStopId={stopId ?? ""}
         position={position}
+        passengerPosition={passengerPosition}
       />
 
       {/* Top bar over the map */}
@@ -273,12 +306,7 @@ export default function TrackScreen() {
 
           <View style={styles.statusRow}>
             <View style={styles.statusRowLeft}>
-              <StatusDot tone={sheet.tone} />
-              <Text
-                style={[styles.statusLabel, { color: toneColor(sheet.tone) }]}
-              >
-                {sheet.label}
-              </Text>
+              <ConnectionDot connected={sheet.connected} />
             </View>
             <View style={styles.statusRowLeft}>
               <Pressable
@@ -404,24 +432,9 @@ export default function TrackScreen() {
                 ) : null}
               </View>
 
-              {(crew?.driver || crew?.conductor) && (
+              {crew?.conductor && (
                 <View style={styles.infoCard}>
-                  <View style={styles.crewRow}>
-                    {crew?.driver && (
-                      <CrewChip
-                        label="Driver"
-                        member={crew.driver}
-                        theme={theme}
-                      />
-                    )}
-                    {crew?.conductor && (
-                      <CrewChip
-                        label="Conductor"
-                        member={crew.conductor}
-                        theme={theme}
-                      />
-                    )}
-                  </View>
+                  <ConductorCard member={crew.conductor} theme={theme} />
                 </View>
               )}
             </>
@@ -432,12 +445,10 @@ export default function TrackScreen() {
   );
 }
 
-function CrewChip({
-  label,
+function ConductorCard({
   member,
   theme,
 }: {
-  label: string;
   member: CrewMember;
   theme: Theme;
 }) {
@@ -456,9 +467,9 @@ function CrewChip({
           <Ionicons name="person" size={14} color={theme.brand} />
         </View>
       )}
-      <View style={{ flexShrink: 1 }}>
+      <View style={{ flexShrink: 1, flex: 1 }}>
         <Text style={[styles.crewLabel, { color: theme.textSecondary }]}>
-          {label}
+          Conductor
         </Text>
         <Text
           style={[styles.crewName, { color: theme.text }]}
@@ -467,13 +478,26 @@ function CrewChip({
           {member.name}
         </Text>
       </View>
+      {member.phone && (
+        <Pressable
+          onPress={() => Linking.openURL(`tel:${member.phone}`)}
+          hitSlop={8}
+          style={[styles.callButton, { backgroundColor: theme.brand }]}
+        >
+          <Ionicons name="call" size={16} color="#fff" />
+        </Pressable>
+      )}
     </View>
   );
 }
 
 interface SheetState {
-  tone: SheetTone;
-  label: string;
+  /** True only when we're actively receiving fresh GPS from the bus right
+   *  now — drives the green/red dot. Every other state (not started,
+   *  boarding, paused, signal gap, completed) is "not connected" — the
+   *  passenger doesn't need to know why, just whether the live map is
+   *  trustworthy at this moment. */
+  connected: boolean;
   title: string;
   sub: string | null;
   etaMinutes: number | null;
@@ -488,8 +512,7 @@ function deriveSheet(
 ): SheetState {
   if (!live)
     return {
-      tone: "idle",
-      label: "Loading",
+      connected: false,
       title: "Locating your bus…",
       sub: null,
       etaMinutes: null,
@@ -502,8 +525,7 @@ function deriveSheet(
 
   if (status === "arrived")
     return {
-      tone: "idle",
-      label: "Completed",
+      connected: false,
       title: "Trip completed",
       sub: "This bus has finished its trip.",
       etaMinutes: null,
@@ -512,8 +534,7 @@ function deriveSheet(
     };
   if (status === "cancelled")
     return {
-      tone: "idle",
-      label: "Cancelled",
+      connected: false,
       title: "Trip cancelled",
       sub: null,
       etaMinutes: null,
@@ -522,8 +543,7 @@ function deriveSheet(
     };
   if (status === "scheduled")
     return {
-      tone: "idle",
-      label: "Not started",
+      connected: false,
       title: "Waiting to depart",
       sub: "Live tracking begins when the bus starts boarding.",
       etaMinutes: null,
@@ -532,24 +552,12 @@ function deriveSheet(
     };
 
   // boarding / departed
-  if (!sharing)
+  if (!sharing || !live.tracking)
     return {
-      tone: "paused",
-      label: "Paused",
-      title: "Location paused",
-      sub: "The driver paused live location sharing.",
-      etaMinutes: null,
-      speedKmh: null,
-      distanceKm: null,
-    };
-
-  if (!live.tracking)
-    return {
-      tone: "idle",
-      label: status === "boarding" ? "Boarding" : "Starting",
+      connected: false,
       title:
         status === "boarding" ? "Boarding at the stop" : "Starting the trip",
-      sub: "Waiting for the bus's location…",
+      sub: "Waiting for the bus's live location…",
       etaMinutes: null,
       speedKmh: null,
       distanceKm: null,
@@ -557,12 +565,11 @@ function deriveSheet(
 
   const ageMs = now - new Date(live.recorded_at).getTime();
   if (ageMs > STALE_MS) {
-    const mins = Math.max(1, Math.round(ageMs / 60000));
     return {
-      tone: "stale",
-      label: "Reconnecting",
-      title: "Signal lost",
-      sub: `Last seen ${mins} min ago`,
+      connected: false,
+      title:
+        status === "boarding" ? "Boarding at the stop" : "Waiting for signal",
+      sub: null,
       etaMinutes: null,
       speedKmh: null,
       distanceKm: null,
@@ -575,8 +582,7 @@ function deriveSheet(
       ? Math.round((live.distance_m / 1000) * 10) / 10
       : null;
   return {
-    tone: "live",
-    label: "Live",
+    connected: true,
     title: status === "boarding" ? "Boarding at the stop" : "On the way",
     sub:
       status === "boarding"
@@ -590,20 +596,15 @@ function deriveSheet(
   };
 }
 
-function toneColor(tone: SheetTone) {
-  switch (tone) {
-    case "live":
-      return "#059669";
-    case "paused":
-    case "stale":
-      return "#b45309";
-    default:
-      return "#9ca3af";
-  }
-}
-
-function StatusDot({ tone }: { tone: SheetTone }) {
-  return <View style={[styles.dot, { backgroundColor: toneColor(tone) }]} />;
+function ConnectionDot({ connected }: { connected: boolean }) {
+  return (
+    <View
+      style={[
+        styles.dot,
+        { backgroundColor: connected ? "#059669" : "#dc2626" },
+      ]}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
@@ -683,13 +684,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   notifyBtnText: { fontSize: 11, fontWeight: "700" },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  statusLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
   etaTo: { fontSize: 15, fontWeight: "500", marginTop: Spacing.two },
   statsRow: { flexDirection: "row", gap: Spacing.five, marginTop: Spacing.two },
   statBlock: {},
@@ -718,14 +713,12 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   infoCard: { marginTop: Spacing.three, gap: Spacing.two },
-  crewRow: { flexDirection: "row", gap: Spacing.four },
   crewChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    flexShrink: 1,
+    gap: 10,
   },
-  crewAvatar: { width: 32, height: 32, borderRadius: 16 },
+  crewAvatar: { width: 36, height: 36, borderRadius: 18 },
   crewAvatarPlaceholder: { alignItems: "center", justifyContent: "center" },
   crewLabel: {
     fontSize: 10,
@@ -734,4 +727,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   crewName: { fontSize: 13, fontWeight: "600" },
+  callButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

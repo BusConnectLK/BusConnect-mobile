@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
-import MapView, { AnimatedRegion, Marker, Polyline, type Region } from "react-native-maps";
+import MapView, {
+  AnimatedRegion,
+  Marker,
+  Polyline,
+  type Region,
+} from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import type { TripRoute } from "@/lib/api";
 import { MUTED_ANDROID_MAP_STYLE } from "@/constants/map-style";
@@ -12,8 +17,48 @@ export interface BusPosition {
 
 const BRAND = "#004aad";
 const ROUTE_UPCOMING = "#a9c2e8";
+const YOU_BLUE = "#1a73e8";
 
 type LatLng = { latitude: number; longitude: number };
+
+// Sri Lanka's bounding box, plus a little padding — the map keeps its center
+// inside this box and won't zoom out far enough to show much beyond the
+// island, so passengers can't accidentally pan/zoom off into open ocean.
+const SL_BOUNDS = { minLat: 5.5, maxLat: 10.0, minLng: 79.3, maxLng: 82.1 };
+const MAX_LAT_DELTA = 4;
+const MAX_LNG_DELTA = 4;
+
+/** Nudges a region back inside SL_BOUNDS/max zoom-out if it strayed past
+ *  them — returns null when the region is already fine (no re-animation). */
+function clampToSriLanka(region: Region): Region | null {
+  let { latitude, longitude, latitudeDelta, longitudeDelta } = region;
+  let changed = false;
+  if (latitudeDelta > MAX_LAT_DELTA) {
+    latitudeDelta = MAX_LAT_DELTA;
+    changed = true;
+  }
+  if (longitudeDelta > MAX_LNG_DELTA) {
+    longitudeDelta = MAX_LNG_DELTA;
+    changed = true;
+  }
+  if (latitude < SL_BOUNDS.minLat) {
+    latitude = SL_BOUNDS.minLat;
+    changed = true;
+  } else if (latitude > SL_BOUNDS.maxLat) {
+    latitude = SL_BOUNDS.maxLat;
+    changed = true;
+  }
+  if (longitude < SL_BOUNDS.minLng) {
+    longitude = SL_BOUNDS.minLng;
+    changed = true;
+  } else if (longitude > SL_BOUNDS.maxLng) {
+    longitude = SL_BOUNDS.maxLng;
+    changed = true;
+  }
+  return changed
+    ? { latitude, longitude, latitudeDelta, longitudeDelta }
+    : null;
+}
 
 /** A region that frames a set of coordinates with some padding. */
 function regionFor(coords: LatLng[]): Region {
@@ -44,7 +89,9 @@ function bearingBetween(a: LatLng, b: LatLng): number {
   const lat2 = toRad(b.latitude);
   const dLng = toRad(b.longitude - a.longitude);
   const y = Math.sin(dLng) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
@@ -78,10 +125,12 @@ export function TrackingMap({
   route,
   boardingStopId,
   position,
+  passengerPosition,
 }: {
   route: TripRoute;
   boardingStopId: string;
   position: BusPosition | null;
+  passengerPosition?: BusPosition | null;
 }) {
   const mapRef = useRef<MapView>(null);
   const [userMoved, setUserMoved] = useState(false);
@@ -100,10 +149,17 @@ export function TrackingMap({
       }),
   );
   const [heading] = useState(() => new Animated.Value(0));
-  const headingRotate = heading.interpolate({ inputRange: [0, 360], outputRange: ["0deg", "360deg"] });
+  const headingRotate = heading.interpolate({
+    inputRange: [0, 360],
+    outputRange: ["0deg", "360deg"],
+  });
 
   const routeCoords = useMemo<LatLng[]>(
-    () => (route.path?.coordinates ?? []).map(([lng, lat]) => ({ latitude: lat, longitude: lng })),
+    () =>
+      (route.path?.coordinates ?? []).map(([lng, lat]) => ({
+        latitude: lat,
+        longitude: lng,
+      })),
     [route],
   );
 
@@ -112,19 +168,35 @@ export function TrackingMap({
   // idea as Uber's "road behind you fades" treatment.
   const [traveledCoords, upcomingCoords] = useMemo<[LatLng[], LatLng[]]>(() => {
     if (!position || routeCoords.length < 2) return [[], routeCoords];
-    const idx = nearestVertexIndex({ latitude: position.lat, longitude: position.lng }, routeCoords);
+    const idx = nearestVertexIndex(
+      { latitude: position.lat, longitude: position.lng },
+      routeCoords,
+    );
     return [routeCoords.slice(0, idx + 1), routeCoords.slice(idx)];
   }, [position, routeCoords]);
 
-  const boardingStop = route.stops.find((s) => s.route_stop_id === boardingStopId);
-  const otherStops = route.stops.filter((s) => s.route_stop_id !== boardingStopId);
+  const boardingStop = route.stops.find(
+    (s) => s.route_stop_id === boardingStopId,
+  );
+  const otherStops = route.stops.filter(
+    (s) => s.route_stop_id !== boardingStopId,
+  );
 
   const initialRegion = useMemo<Region>(() => {
     if (position) {
-      return { latitude: position.lat, longitude: position.lng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+      return {
+        latitude: position.lat,
+        longitude: position.lng,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
     }
-    const pts = routeCoords.length ? routeCoords : route.stops.map((s) => ({ latitude: s.lat, longitude: s.lng }));
-    return pts.length ? regionFor(pts) : { latitude: 7.3, longitude: 80.0, latitudeDelta: 1, longitudeDelta: 1 };
+    const pts = routeCoords.length
+      ? routeCoords
+      : route.stops.map((s) => ({ latitude: s.lat, longitude: s.lng }));
+    return pts.length
+      ? regionFor(pts)
+      : { latitude: 7.3, longitude: 80.0, latitudeDelta: 1, longitudeDelta: 1 };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial only; later movement is imperative
   }, []);
 
@@ -140,14 +212,23 @@ export function TrackingMap({
       busCoord.setValue({ ...next, latitudeDelta: 0, longitudeDelta: 0 });
     } else {
       busCoord
-        .timing({ toValue: 0, ...next, latitudeDelta: 0, longitudeDelta: 0, duration: 1000, useNativeDriver: false })
+        .timing({
+          toValue: 0,
+          ...next,
+          latitudeDelta: 0,
+          longitudeDelta: 0,
+          duration: 1000,
+          useNativeDriver: false,
+        })
         .start();
 
       // Skip the bearing update on a near-zero move — GPS jitter at a stop
       // would otherwise spin the icon back and forth for no reason.
       const prev = prevPos.current;
       if (prev) {
-        const moved = (prev.latitude - next.latitude) ** 2 + (prev.longitude - next.longitude) ** 2;
+        const moved =
+          (prev.latitude - next.latitude) ** 2 +
+          (prev.longitude - next.longitude) ** 2;
         if (moved > 1e-10) {
           Animated.timing(heading, {
             toValue: bearingBetween(prev, next),
@@ -168,12 +249,29 @@ export function TrackingMap({
     setUserMoved(false);
     if (position) {
       mapRef.current?.animateCamera(
-        { center: { latitude: position.lat, longitude: position.lng }, zoom: 15 },
+        {
+          center: { latitude: position.lat, longitude: position.lng },
+          zoom: 15,
+        },
         { duration: 700 },
       );
     } else if (routeCoords.length) {
       mapRef.current?.animateToRegion(regionFor(routeCoords), 700);
     }
+  }
+
+  async function zoomBy(delta: number) {
+    const camera = await mapRef.current?.getCamera();
+    if (!camera) return;
+    mapRef.current?.animateCamera(
+      { ...camera, zoom: (camera.zoom ?? 12) + delta },
+      { duration: 250 },
+    );
+  }
+
+  function onRegionChangeComplete(region: Region) {
+    const clamped = clampToSriLanka(region);
+    if (clamped) mapRef.current?.animateToRegion(clamped, 300);
   }
 
   return (
@@ -183,6 +281,8 @@ export function TrackingMap({
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         onPanDrag={() => !userMoved && setUserMoved(true)}
+        onRegionChangeComplete={onRegionChangeComplete}
+        minZoomLevel={6}
         showsUserLocation={false}
         showsMyLocationButton={false}
         toolbarEnabled={false}
@@ -192,13 +292,27 @@ export function TrackingMap({
         showsTraffic={false}
         showsIndoors={false}
         mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
-        customMapStyle={Platform.OS === "android" ? MUTED_ANDROID_MAP_STYLE : undefined}
+        customMapStyle={
+          Platform.OS === "android" ? MUTED_ANDROID_MAP_STYLE : undefined
+        }
       >
         {traveledCoords.length > 1 && (
-          <Polyline coordinates={traveledCoords} strokeColor={ROUTE_UPCOMING} strokeWidth={4} lineCap="round" lineJoin="round" />
+          <Polyline
+            coordinates={traveledCoords}
+            strokeColor={ROUTE_UPCOMING}
+            strokeWidth={4}
+            lineCap="round"
+            lineJoin="round"
+          />
         )}
         {upcomingCoords.length > 1 && (
-          <Polyline coordinates={upcomingCoords} strokeColor={BRAND} strokeWidth={5} lineCap="round" lineJoin="round" />
+          <Polyline
+            coordinates={upcomingCoords}
+            strokeColor={BRAND}
+            strokeWidth={5}
+            lineCap="round"
+            lineJoin="round"
+          />
         )}
 
         {otherStops.map((s) => (
@@ -208,13 +322,21 @@ export function TrackingMap({
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={false}
           >
-            <View style={[styles.stopDot, (s.is_origin || s.is_dest) && styles.stopDotEndpoint]} />
+            <View
+              style={[
+                styles.stopDot,
+                (s.is_origin || s.is_dest) && styles.stopDotEndpoint,
+              ]}
+            />
           </Marker>
         ))}
 
         {boardingStop && (
           <Marker
-            coordinate={{ latitude: boardingStop.lat, longitude: boardingStop.lng }}
+            coordinate={{
+              latitude: boardingStop.lat,
+              longitude: boardingStop.lng,
+            }}
             anchor={{ x: 0.5, y: 1 }}
             tracksViewChanges={false}
             title="Your stop"
@@ -227,27 +349,84 @@ export function TrackingMap({
         )}
 
         {position && (
-          <Marker.Animated coordinate={busCoord as unknown as LatLng} anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker.Animated
+            coordinate={busCoord as unknown as LatLng}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
             <View style={styles.busPuckRing}>
-              <Animated.View style={[styles.busPuck, { transform: [{ rotate: headingRotate }] }]}>
-                <Ionicons name="bus" size={16} color="#fff" style={styles.busPuckIcon} />
+              <Animated.View
+                style={[
+                  styles.busPuck,
+                  { transform: [{ rotate: headingRotate }] },
+                ]}
+              >
+                <Ionicons
+                  name="bus"
+                  size={16}
+                  color="#fff"
+                  style={styles.busPuckIcon}
+                />
               </Animated.View>
             </View>
           </Marker.Animated>
         )}
+
+        {passengerPosition && (
+          <Marker
+            coordinate={{
+              latitude: passengerPosition.lat,
+              longitude: passengerPosition.lng,
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+            title="You"
+            zIndex={1}
+          >
+            <View style={styles.youDotHalo}>
+              <View style={styles.youDot} />
+            </View>
+          </Marker>
+        )}
       </MapView>
 
-      {userMoved && (
-        <Pressable style={styles.recenter} onPress={recenter} hitSlop={8}>
-          <Ionicons name="locate" size={20} color={BRAND} />
+      <View style={styles.controls}>
+        {userMoved && (
+          <Pressable
+            style={styles.controlButton}
+            onPress={recenter}
+            hitSlop={8}
+          >
+            <Ionicons name="locate" size={20} color={BRAND} />
+          </Pressable>
+        )}
+        <Pressable
+          style={styles.controlButton}
+          onPress={() => zoomBy(1)}
+          hitSlop={8}
+        >
+          <Ionicons name="add" size={20} color={BRAND} />
         </Pressable>
-      )}
+        <Pressable
+          style={styles.controlButton}
+          onPress={() => zoomBy(-1)}
+          hitSlop={8}
+        >
+          <Ionicons name="remove" size={20} color={BRAND} />
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stopDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#fff", borderWidth: 2, borderColor: BRAND },
+  stopDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: BRAND,
+  },
   stopDotEndpoint: { width: 13, height: 13, borderRadius: 7 },
   youPin: {
     width: 26,
@@ -279,15 +458,23 @@ const styles = StyleSheet.create({
   },
   // Rotates independently of the static ring/shadow above so the heading
   // arrow turns without visibly spinning the white border or drop shadow.
-  busPuck: { width: 20, height: 20, alignItems: "center", justifyContent: "center" },
+  busPuck: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   busPuckIcon: { marginLeft: 1 },
-  recenter: {
+  controls: {
     position: "absolute",
     right: 16,
     bottom: 16,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    gap: 10,
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
@@ -296,5 +483,21 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
+  },
+  youDotHalo: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(26,115,232,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  youDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: YOU_BLUE,
+    borderWidth: 2,
+    borderColor: "#fff",
   },
 });

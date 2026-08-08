@@ -12,7 +12,8 @@
       "bundleIdentifier": "lk.busconnect.app",
       "appleTeamId": "B9Z73W94NU",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "BusConnect shows your position on the map while tracking a bus."
       }
     },
     "android": {
@@ -22,9 +23,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
+      "permissions": ["android.permission.RECORD_AUDIO"],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAWcBofkfWHUye3Xy_fpusxzq6XtfEZtZY"
@@ -65,6 +64,12 @@
           "ios": {
             "useFrameworks": "static"
           }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BusConnect shows your position on the map while tracking a bus."
         }
       ]
     ],
